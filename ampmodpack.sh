@@ -18,7 +18,7 @@
 set -Eeuo pipefail
 umask 022
 
-SCRIPT_VERSION="1.0.4"
+SCRIPT_VERSION="1.1.0"
 DEFAULT_HELPER_VERSION="1.76.0"
 DEFAULT_EXCLUDE_FILE="https://raw.githubusercontent.com/itzg/docker-minecraft-server/master/files/cf-exclude-include.json"
 
@@ -237,15 +237,21 @@ server_running() {
   grep -qa java "/proc/$pid/cmdline" 2>/dev/null
 }
 
-set_property() { # set_property FILE KEY VALUE   (edit in place, keep everything else)
-  local file="$1" key="$2" value="$3"
-  if [[ -f "$file" ]] && grep -q "^${key}=" "$file"; then
-    local cur; cur="$(grep -m1 "^${key}=" "$file" | cut -d= -f2-)"
-    [[ "$cur" == "$value" ]] && return 0
-    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
-  else
-    printf '%s=%s\n' "$key" "$value" >> "$file"
-  fi
+set_property() { # set_property FILE KEY VALUE   (edit in place, keep every other line)
+  # Values go through the environment so &, |, \ and § colour codes are written literally.
+  local file="$1" key="$2" value="$3" cur
+  [[ -f "$file" ]] || : > "$file"
+  cur="$(K="$key" awk 'index($0, ENVIRON["K"] "=") == 1 { print substr($0, length(ENVIRON["K"]) + 2); exit }' "$file")"
+  if grep -q "^${key//./\\.}=" "$file" && [[ "$cur" == "$value" ]]; then return 0; fi
+  K="$key" V="$value" awk '
+    BEGIN { k = ENVIRON["K"]; v = ENVIRON["V"]; done = 0 }
+    !done && index($0, k "=") == 1 { print k "=" v; done = 1; next }
+    { print }
+    END { if (!done) print k "=" v }
+  ' "$file" > "$file.tmp"
+  cat "$file.tmp" > "$file"   # keep the original file's owner and permissions
+  rm -f "$file.tmp"
+  return 1   # "changed"
 }
 
 level_name() {
@@ -571,7 +577,7 @@ cmd_update() {
 # start
 # ---------------------------------------------------------------------------------------------
 cmd_start() {
-  local java_choice="auto" java_path="" ram="" port="" eula="false"
+  local java_choice="auto" java_path="" ram="" port="" eula="false" props=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --java) java_choice="$(clean "${2-}")"; shift 2 ;;
@@ -579,6 +585,7 @@ cmd_start() {
       --ram) ram="$(clean "${2-}")"; shift 2 ;;
       --port) port="$(clean "${2-}")"; shift 2 ;;
       --eula) eula="$(clean "${2-}")"; shift 2 ;;
+      --prop) props+=("$(clean "${2-}")"); shift 2 ;;
       --) shift; break ;;
       *) die "Unknown start option: $1" ;;
     esac
@@ -595,7 +602,20 @@ cmd_start() {
   printf '# Accepted via AMP instance setting\neula=true\n' > "$SERVER_DIR/eula.txt"
 
   [[ "$port" =~ ^[0-9]+$ ]] || die "Invalid server port: '$port'"
-  set_property "$SERVER_DIR/server.properties" server-port "$port"
+  set_property "$SERVER_DIR/server.properties" server-port "$port" || true
+
+  # server.properties values from the AMP settings page (--prop key=value). Only these keys are
+  # touched; a blank value means "leave whatever the file has". Everything else in the file
+  # (pack-specific lines like level-type, or your own edits) is left alone.
+  local p key val changed=()
+  for p in "${props[@]}"; do
+    [[ "$p" == *=* ]] || continue
+    key="${p%%=*}"; val="${p#*=}"
+    [[ "$key" =~ ^[a-z0-9][a-z0-9.-]*$ ]] || { warn "Ignoring invalid server.properties key '$key'"; continue; }
+    [[ -n "$val" ]] || continue
+    set_property "$SERVER_DIR/server.properties" "$key" "$val" || changed+=("$key=$val")
+  done
+  (( ${#changed[@]} == 0 )) || log "server.properties updated from AMP settings: ${changed[*]}"
 
   [[ "$ram" =~ ^[0-9]+$ ]] || die "Invalid RAM setting: '$ram' (megabytes)"
   local xms=$(( ram < 2048 ? ram : 2048 ))

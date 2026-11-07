@@ -72,6 +72,31 @@ that was otherwise valid.
 5. Press **Start**. AMP shows *Running* once the server prints `Done (...)! For help, type "help"`.
    **Stop** sends `stop`, so the world is saved properly.
 
+## Minecraft server settings (server.properties)
+
+The instance's **Configuration → Minecraft Server** page holds the usual `server.properties` options:
+
+- **Server List**: MOTD, max players, whitelist, online mode
+- **Gameplay**: game mode, difficulty, hardcore, PvP, allow flight, spawn protection, op level, command blocks, idle kick
+- **World**: world folder name, seed, world type, structures, Nether
+- **Performance**: view distance, simulation distance, watchdog timeout
+
+Changes apply the next time the server starts. How they're written:
+
+- On every start, the template writes **only the keys on that page** into `server/server.properties`.
+  Every other line in the file is left alone. So you can still edit anything else by hand in the
+  File Manager, and pack-specific lines (for example a skyblock pack's `level-type`) survive.
+- A **blank** text field (MOTD, world name, seed, world type, watchdog) means "don't touch this key".
+  Leave **World Type** blank for modpacks; they often set their own.
+- Keys on that page always win. If you edit one of them by hand in `server.properties`, the AMP
+  setting overwrites it on the next start. Change it in AMP instead.
+- `server-port` comes from AMP's port setting and is always written.
+- **Allow Flight** defaults to on, because modded flight (jetpacks, rings, wings) otherwise gets players kicked.
+- Don't put double quotes (`"`) in the MOTD. For colours, use `§` or `§` followed by a colour code, e.g. `§6Gold`.
+
+Game rules like `keepInventory` aren't in `server.properties`; they're stored in the world. Set them
+once in the console, e.g. `gamerule keepInventory true`.
+
 ## 4. Update a pack
 
 Stop the server, then press **Update**. That's all:

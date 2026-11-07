@@ -21,7 +21,7 @@ Meta.Prerequisites=[]
 Meta.ExtraContainerPackages=[]
 Meta.ConfigReleaseState=NotSpecified
 Meta.NoCommercialUsage=False
-Meta.ConfigVersion=4
+Meta.ConfigVersion=5
 Meta.ReleaseNotes=
 Meta.BreakingReleaseNotes=
 Meta.AppConfigId=d4641505-a012-4c25-92f5-cc5ebc62f4c7
@@ -34,7 +34,7 @@ App.ExecutableLinux=/bin/bash
 App.WorkingDir=server
 App.LinuxCommandLineArgs=
 App.WindowsCommandLineArgs=
-App.CommandLineArgs="{{$FullRootDir}}tools/ampmodpack.sh" start --java "{{JavaRuntime}}" --java-path "{{JavaCustomPath}}" --ram "{{MaxRAM}}" --port "{{$ServerPort}}" --eula "{{AcceptEula}}" -- {{JvmArgs}}
+App.CommandLineArgs="{{$FullRootDir}}tools/ampmodpack.sh" start --java "{{JavaRuntime}}" --java-path "{{JavaCustomPath}}" --ram "{{MaxRAM}}" --port "{{$ServerPort}}" --eula "{{AcceptEula}}" --prop "motd={{MCMotd}}" --prop "max-players={{$MaxUsers}}" --prop "white-list={{MCWhiteList}}" --prop "enforce-whitelist={{MCEnforceWhitelist}}" --prop "online-mode={{MCOnlineMode}}" --prop "gamemode={{MCGamemode}}" --prop "force-gamemode={{MCForceGamemode}}" --prop "difficulty={{MCDifficulty}}" --prop "hardcore={{MCHardcore}}" --prop "pvp={{MCPvp}}" --prop "allow-flight={{MCAllowFlight}}" --prop "spawn-protection={{MCSpawnProtection}}" --prop "op-permission-level={{MCOpPermissionLevel}}" --prop "enable-command-block={{MCEnableCommandBlock}}" --prop "player-idle-timeout={{MCPlayerIdleTimeout}}" --prop "level-name={{MCLevelName}}" --prop "level-seed={{MCLevelSeed}}" --prop "level-type={{MCLevelType}}" --prop "generate-structures={{MCGenerateStructures}}" --prop "allow-nether={{MCAllowNether}}" --prop "view-distance={{MCViewDistance}}" --prop "simulation-distance={{MCSimulationDistance}}" --prop "max-tick-time={{MCMaxTickTime}}" -- {{JvmArgs}}
 App.UseLinuxIOREDIR=False
 App.AppSettings={}
 App.EnvironmentVariables={}

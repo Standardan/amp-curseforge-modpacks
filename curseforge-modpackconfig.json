@@ -265,5 +265,365 @@
         "IncludeInCommandLine": false,
         "DefaultValue": "https://raw.githubusercontent.com/Standardan/amp-curseforge-modpacks/main/ampmodpack.sh",
         "EnumValues": {}
+    },
+    {
+        "DisplayName": "Message of the Day (MOTD)",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Server List:dns:1",
+        "Description": "The text shown under the server name in the multiplayer list. Colour codes like §6 or § work. Blank = leave server.properties as it is. Don't use double quotes.",
+        "Keywords": "motd,server.properties,MCMotd",
+        "FieldName": "MCMotd",
+        "InputType": "text",
+        "ParamFieldName": "motd",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {},
+        "Placeholder": "A Minecraft Server"
+    },
+    {
+        "DisplayName": "Max Players",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Server List:dns:1",
+        "Description": "Maximum number of players online at once.",
+        "Keywords": "max,players,server.properties,$MaxUsers",
+        "FieldName": "$MaxUsers",
+        "InputType": "number",
+        "ParamFieldName": "max-players",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "20",
+        "EnumValues": {},
+        "MinValue": "1",
+        "Suffix": "players"
+    },
+    {
+        "DisplayName": "Whitelist",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Server List:dns:1",
+        "Description": "Only players on the whitelist can join. Manage it with /whitelist add <name> in the console.",
+        "Keywords": "white,list,server.properties,MCWhiteList",
+        "FieldName": "MCWhiteList",
+        "InputType": "checkbox",
+        "ParamFieldName": "white-list",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "false",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
+    },
+    {
+        "DisplayName": "Enforce Whitelist",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Server List:dns:1",
+        "Description": "Kick online players who are not on the whitelist when it is reloaded.",
+        "Keywords": "enforce,whitelist,server.properties,MCEnforceWhitelist",
+        "FieldName": "MCEnforceWhitelist",
+        "InputType": "checkbox",
+        "ParamFieldName": "enforce-whitelist",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "false",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
+    },
+    {
+        "DisplayName": "Online Mode",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Server List:dns:1",
+        "Description": "Check players against Mojang's account servers. Keep this on unless you know why you need it off.",
+        "Keywords": "online,mode,server.properties,MCOnlineMode",
+        "FieldName": "MCOnlineMode",
+        "InputType": "checkbox",
+        "ParamFieldName": "online-mode",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "true",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
+    },
+    {
+        "DisplayName": "Game Mode",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Gameplay:sports_esports:2",
+        "Description": "Game mode for new players.",
+        "Keywords": "gamemode,server.properties,MCGamemode",
+        "FieldName": "MCGamemode",
+        "InputType": "enum",
+        "ParamFieldName": "gamemode",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "survival",
+        "EnumValues": {
+            "survival": "Survival (default)",
+            "creative": "Creative",
+            "adventure": "Adventure",
+            "spectator": "Spectator"
+        }
+    },
+    {
+        "DisplayName": "Force Game Mode",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Gameplay:sports_esports:2",
+        "Description": "Put players back into the default game mode every time they join.",
+        "Keywords": "force,gamemode,server.properties,MCForceGamemode",
+        "FieldName": "MCForceGamemode",
+        "InputType": "checkbox",
+        "ParamFieldName": "force-gamemode",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "false",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
+    },
+    {
+        "DisplayName": "Difficulty",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Gameplay:sports_esports:2",
+        "Description": "World difficulty.",
+        "Keywords": "difficulty,server.properties,MCDifficulty",
+        "FieldName": "MCDifficulty",
+        "InputType": "enum",
+        "ParamFieldName": "difficulty",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "easy",
+        "EnumValues": {
+            "peaceful": "Peaceful",
+            "easy": "Easy (default)",
+            "normal": "Normal",
+            "hard": "Hard"
+        }
+    },
+    {
+        "DisplayName": "Hardcore",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Gameplay:sports_esports:2",
+        "Description": "Players are put into spectator mode when they die.",
+        "Keywords": "hardcore,server.properties,MCHardcore",
+        "FieldName": "MCHardcore",
+        "InputType": "checkbox",
+        "ParamFieldName": "hardcore",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "false",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
+    },
+    {
+        "DisplayName": "PvP",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Gameplay:sports_esports:2",
+        "Description": "Allow players to damage each other.",
+        "Keywords": "pvp,server.properties,MCPvp",
+        "FieldName": "MCPvp",
+        "InputType": "checkbox",
+        "ParamFieldName": "pvp",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "true",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
+    },
+    {
+        "DisplayName": "Allow Flight",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Gameplay:sports_esports:2",
+        "Description": "Keep this on for modpacks: otherwise players using jetpacks, wings or flight rings get kicked for flying.",
+        "Keywords": "allow,flight,server.properties,MCAllowFlight",
+        "FieldName": "MCAllowFlight",
+        "InputType": "checkbox",
+        "ParamFieldName": "allow-flight",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "true",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
+    },
+    {
+        "DisplayName": "Spawn Protection Radius",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Gameplay:sports_esports:2",
+        "Description": "Radius around spawn where only operators can build. 0 turns it off.",
+        "Keywords": "spawn,protection,server.properties,MCSpawnProtection",
+        "FieldName": "MCSpawnProtection",
+        "InputType": "number",
+        "ParamFieldName": "spawn-protection",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "16",
+        "EnumValues": {},
+        "MinValue": "0",
+        "Suffix": "blocks"
+    },
+    {
+        "DisplayName": "Operator Permission Level",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Gameplay:sports_esports:2",
+        "Description": "Default permission level for /op.",
+        "Keywords": "op,permission,level,server.properties,MCOpPermissionLevel",
+        "FieldName": "MCOpPermissionLevel",
+        "InputType": "enum",
+        "ParamFieldName": "op-permission-level",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "4",
+        "EnumValues": {
+            "1": "1 - Bypass spawn protection",
+            "2": "2 - Cheat commands, command blocks",
+            "3": "3 - Multiplayer management (kick, ban)",
+            "4": "4 - All commands (default)"
+        }
+    },
+    {
+        "DisplayName": "Enable Command Blocks",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Gameplay:sports_esports:2",
+        "Description": "Allow command blocks to run.",
+        "Keywords": "enable,command,block,server.properties,MCEnableCommandBlock",
+        "FieldName": "MCEnableCommandBlock",
+        "InputType": "checkbox",
+        "ParamFieldName": "enable-command-block",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "false",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
+    },
+    {
+        "DisplayName": "Idle Kick Timeout",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Gameplay:sports_esports:2",
+        "Description": "Kick players who are idle for this many minutes. 0 = never.",
+        "Keywords": "player,idle,timeout,server.properties,MCPlayerIdleTimeout",
+        "FieldName": "MCPlayerIdleTimeout",
+        "InputType": "number",
+        "ParamFieldName": "player-idle-timeout",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "0",
+        "EnumValues": {},
+        "MinValue": "0",
+        "Suffix": "minutes"
+    },
+    {
+        "DisplayName": "World Folder Name",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "World:public:3",
+        "Description": "Name of the world folder. Blank = leave as is (normally 'world'). Changing it starts a different world; the old one stays on disk.",
+        "Keywords": "level,name,server.properties,MCLevelName",
+        "FieldName": "MCLevelName",
+        "InputType": "text",
+        "ParamFieldName": "level-name",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {},
+        "Placeholder": "world"
+    },
+    {
+        "DisplayName": "World Seed",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "World:public:3",
+        "Description": "Seed for a new world. Only used when the world is first generated. Blank = random / leave as is.",
+        "Keywords": "level,seed,server.properties,MCLevelSeed",
+        "FieldName": "MCLevelSeed",
+        "InputType": "text",
+        "ParamFieldName": "level-seed",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {}
+    },
+    {
+        "DisplayName": "World Type",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "World:public:3",
+        "Description": "Only used when the world is first generated. Blank = leave as is, which keeps the world type a skyblock or special pack sets. Examples: minecraft:normal, minecraft:flat, minecraft:large_biomes, minecraft:amplified.",
+        "Keywords": "level,type,server.properties,MCLevelType",
+        "FieldName": "MCLevelType",
+        "InputType": "text",
+        "ParamFieldName": "level-type",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {},
+        "Placeholder": "leave blank for modpacks"
+    },
+    {
+        "DisplayName": "Generate Structures",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "World:public:3",
+        "Description": "Generate villages, temples and other structures in new chunks.",
+        "Keywords": "generate,structures,server.properties,MCGenerateStructures",
+        "FieldName": "MCGenerateStructures",
+        "InputType": "checkbox",
+        "ParamFieldName": "generate-structures",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "true",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
+    },
+    {
+        "DisplayName": "Allow Nether",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "World:public:3",
+        "Description": "Allow players to travel to the Nether.",
+        "Keywords": "allow,nether,server.properties,MCAllowNether",
+        "FieldName": "MCAllowNether",
+        "InputType": "checkbox",
+        "ParamFieldName": "allow-nether",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "true",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
+    },
+    {
+        "DisplayName": "View Distance",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Performance:speed:4",
+        "Description": "How many chunks around each player the server sends. Lower it if the server lags.",
+        "Keywords": "view,distance,server.properties,MCViewDistance",
+        "FieldName": "MCViewDistance",
+        "InputType": "number",
+        "ParamFieldName": "view-distance",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "10",
+        "EnumValues": {},
+        "MinValue": "3",
+        "MaxValue": "32",
+        "Suffix": "chunks"
+    },
+    {
+        "DisplayName": "Simulation Distance",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Performance:speed:4",
+        "Description": "How many chunks around each player are ticked (machines, mobs, crops). Lower it if the server lags.",
+        "Keywords": "simulation,distance,server.properties,MCSimulationDistance",
+        "FieldName": "MCSimulationDistance",
+        "InputType": "number",
+        "ParamFieldName": "simulation-distance",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "10",
+        "EnumValues": {},
+        "MinValue": "3",
+        "MaxValue": "32",
+        "Suffix": "chunks"
+    },
+    {
+        "DisplayName": "Watchdog Timeout",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Performance:speed:4",
+        "Description": "Milliseconds a single tick may take before the server considers itself frozen and shuts down. Big modpacks sometimes need -1 (off) during heavy world generation. Blank = leave as is (Minecraft's default is 60000).",
+        "Keywords": "max,tick,time,server.properties,MCMaxTickTime",
+        "FieldName": "MCMaxTickTime",
+        "InputType": "text",
+        "ParamFieldName": "max-tick-time",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {},
+        "Placeholder": "60000"
     }
 ]
