@@ -1063,5 +1063,92 @@
         "DefaultValue": "",
         "EnumValues": {},
         "Placeholder": "ruleName=value; ruleName=value"
+    },
+    {
+        "DisplayName": "Sleep When Empty",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Sleep:bedtime:7",
+        "Description": "Stop the Minecraft server when nobody has been online for a while, and start it again as soon as someone joins from Minecraft. While asleep the server still shows in the server list (with the sleeping message below) and uses almost no RAM or CPU. The first player to join is asked to come back in a minute while it starts. Takes effect on the next start.",
+        "Keywords": "sleep,idle,wake,SleepEnabled",
+        "FieldName": "SleepEnabled",
+        "InputType": "checkbox",
+        "ParamFieldName": "SleepEnabled",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "true",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
+    },
+    {
+        "DisplayName": "Minutes Before Sleeping",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Sleep:bedtime:7",
+        "Description": "How long the server stays up with nobody online before it goes to sleep. 0 = never sleep.",
+        "Keywords": "sleep,idle,wake,SleepIdleMinutes",
+        "FieldName": "SleepIdleMinutes",
+        "InputType": "number",
+        "ParamFieldName": "SleepIdleMinutes",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "15",
+        "EnumValues": {},
+        "minValue": "0",
+        "maxValue": "1440",
+        "Suffix": "minutes"
+    },
+    {
+        "DisplayName": "Start Asleep",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Sleep:bedtime:7",
+        "Description": "When AMP starts the instance, don't boot the server until someone joins. Useful if AMP starts all instances when the machine boots.",
+        "Keywords": "sleep,idle,wake,SleepStartAsleep",
+        "FieldName": "SleepStartAsleep",
+        "InputType": "checkbox",
+        "ParamFieldName": "SleepStartAsleep",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "false",
+        "EnumValues": {
+            "False": "false",
+            "True": "true"
+        }
+    },
+    {
+        "DisplayName": "Sleeping MOTD",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Sleep:bedtime:7",
+        "Description": "Server list text while the server is asleep. Same format as the MOTD: colour codes written as \\u00A7 (e.g. \\u00A76 for gold) and \\n for a second line. The [MOTD Workbench](https://claude.ai/artifact/NSTcMdVkFBP7CfSHSQd4x3) makes these. Blank = default.",
+        "Keywords": "sleep,idle,wake,SleepMotd",
+        "FieldName": "SleepMotd",
+        "InputType": "text",
+        "ParamFieldName": "SleepMotd",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "\\u00A79\\u00A7lZzz \\u00A77The server is asleep.\\n\\u00A7fJoin to wake it up!",
+        "EnumValues": {}
+    },
+    {
+        "DisplayName": "Waking Up MOTD",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Sleep:bedtime:7",
+        "Description": "Server list text while the server is starting after being woken. Blank = default.",
+        "Keywords": "sleep,idle,wake,SleepStartingMotd",
+        "FieldName": "SleepStartingMotd",
+        "InputType": "text",
+        "ParamFieldName": "SleepStartingMotd",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "\\u00A76Waking up...\\n\\u00A77Ready in a minute or two.",
+        "EnumValues": {}
+    },
+    {
+        "DisplayName": "Waking Up Message",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Sleep:bedtime:7",
+        "Description": "What a player sees when their join wakes the server (or the server is still starting). Blank = default.",
+        "Keywords": "sleep,idle,wake,SleepKickMessage",
+        "FieldName": "SleepKickMessage",
+        "InputType": "text",
+        "ParamFieldName": "SleepKickMessage",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "\\u00A76The server is waking up!\\n\\u00A77Give it a minute or two, then join again.",
+        "EnumValues": {}
     }
 ]

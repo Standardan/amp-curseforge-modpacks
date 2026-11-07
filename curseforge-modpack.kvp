@@ -21,8 +21,8 @@ Meta.Prerequisites=[]
 Meta.ExtraContainerPackages=[]
 Meta.ConfigReleaseState=NotSpecified
 Meta.NoCommercialUsage=False
-Meta.ConfigVersion=7
-Meta.ReleaseNotes=
+Meta.ConfigVersion=8
+Meta.ReleaseNotes=Sleep mode now runs inside the instance (AmpSleep): the server stops when nobody is online and starts when someone joins from Minecraft. Press Update once to get the new script.
 Meta.BreakingReleaseNotes=
 Meta.AppConfigId=d4641505-a012-4c25-92f5-cc5ebc62f4c7
 App.DisplayName=Minecraft CurseForge Modpack
@@ -34,7 +34,7 @@ App.ExecutableLinux=/bin/bash
 App.WorkingDir=server
 App.LinuxCommandLineArgs=
 App.WindowsCommandLineArgs=
-App.CommandLineArgs="{{$FullRootDir}}tools/ampmodpack.sh" start --java "{{JavaRuntime}}" --java-path "{{JavaCustomPath}}" --ram "{{MaxRAM}}" --port "{{$ServerPort}}" --eula "{{AcceptEula}}" --prop "motd={{MCMotd}}" --prop "max-players={{$MaxUsers}}" --prop "white-list={{MCWhiteList}}" --prop "enforce-whitelist={{MCEnforceWhitelist}}" --prop "online-mode={{MCOnlineMode}}" --prop "gamemode={{MCGamemode}}" --prop "force-gamemode={{MCForceGamemode}}" --prop "difficulty={{MCDifficulty}}" --prop "hardcore={{MCHardcore}}" --prop "pvp={{MCPvp}}" --prop "allow-flight={{MCAllowFlight}}" --prop "spawn-protection={{MCSpawnProtection}}" --prop "op-permission-level={{MCOpPermissionLevel}}" --prop "enable-command-block={{MCEnableCommandBlock}}" --prop "player-idle-timeout={{MCPlayerIdleTimeout}}" --prop "level-name={{MCLevelName}}" --prop "level-seed={{MCLevelSeed}}" --prop "level-type={{MCLevelType}}" --prop "generate-structures={{MCGenerateStructures}}" --prop "allow-nether={{MCAllowNether}}" --prop "view-distance={{MCViewDistance}}" --prop "simulation-distance={{MCSimulationDistance}}" --prop "max-tick-time={{MCMaxTickTime}}" --prop "hide-online-players={{MCHideOnlinePlayers}}" --prop "enforce-secure-profile={{MCEnforceSecureProfile}}" --prop "resource-pack={{MCResourcePack}}" --prop "resource-pack-sha1={{MCResourcePackSha1}}" --prop "require-resource-pack={{MCRequireResourcePack}}" --prop "sync-chunk-writes={{MCSyncChunkWrites}}" --prop "max-world-size={{MCMaxWorldSize}}" --prop "entity-broadcast-range-percentage={{MCEntityBroadcast}}" --prop "network-compression-threshold={{MCNetworkCompression}}" --prop-extra "{{MCExtraProperties}}" --icon "{{ServerIconURL}}" --rule "keepInventory={{GRKeepInventory}}" --rule "doFireTick={{GRDoFireTick}}" --rule "mobGriefing={{GRMobGriefing}}" --rule "doDaylightCycle={{GRDoDaylightCycle}}" --rule "doWeatherCycle={{GRDoWeatherCycle}}" --rule "doMobSpawning={{GRDoMobSpawning}}" --rule "doInsomnia={{GRDoInsomnia}}" --rule "doImmediateRespawn={{GRDoImmediateRespawn}}" --rule "announceAdvancements={{GRAnnounceAdvancements}}" --rule "showDeathMessages={{GRShowDeathMessages}}" --rule "naturalRegeneration={{GRNaturalRegeneration}}" --rule "doTraderSpawning={{GRDoTraderSpawning}}" --rule "doPatrolSpawning={{GRDoPatrolSpawning}}" --rule "playersSleepingPercentage={{GRPlayersSleepingPercentage}}" --rule "randomTickSpeed={{GRRandomTickSpeed}}" --rule "spawnRadius={{GRSpawnRadius}}" --rule-extra "{{GRExtra}}" -- {{JvmArgs}}
+App.CommandLineArgs="{{$FullRootDir}}tools/ampmodpack.sh" start --java "{{JavaRuntime}}" --java-path "{{JavaCustomPath}}" --ram "{{MaxRAM}}" --port "{{$ServerPort}}" --eula "{{AcceptEula}}" --prop "motd={{MCMotd}}" --prop "max-players={{$MaxUsers}}" --prop "white-list={{MCWhiteList}}" --prop "enforce-whitelist={{MCEnforceWhitelist}}" --prop "online-mode={{MCOnlineMode}}" --prop "gamemode={{MCGamemode}}" --prop "force-gamemode={{MCForceGamemode}}" --prop "difficulty={{MCDifficulty}}" --prop "hardcore={{MCHardcore}}" --prop "pvp={{MCPvp}}" --prop "allow-flight={{MCAllowFlight}}" --prop "spawn-protection={{MCSpawnProtection}}" --prop "op-permission-level={{MCOpPermissionLevel}}" --prop "enable-command-block={{MCEnableCommandBlock}}" --prop "player-idle-timeout={{MCPlayerIdleTimeout}}" --prop "level-name={{MCLevelName}}" --prop "level-seed={{MCLevelSeed}}" --prop "level-type={{MCLevelType}}" --prop "generate-structures={{MCGenerateStructures}}" --prop "allow-nether={{MCAllowNether}}" --prop "view-distance={{MCViewDistance}}" --prop "simulation-distance={{MCSimulationDistance}}" --prop "max-tick-time={{MCMaxTickTime}}" --prop "hide-online-players={{MCHideOnlinePlayers}}" --prop "enforce-secure-profile={{MCEnforceSecureProfile}}" --prop "resource-pack={{MCResourcePack}}" --prop "resource-pack-sha1={{MCResourcePackSha1}}" --prop "require-resource-pack={{MCRequireResourcePack}}" --prop "sync-chunk-writes={{MCSyncChunkWrites}}" --prop "max-world-size={{MCMaxWorldSize}}" --prop "entity-broadcast-range-percentage={{MCEntityBroadcast}}" --prop "network-compression-threshold={{MCNetworkCompression}}" --prop-extra "{{MCExtraProperties}}" --icon "{{ServerIconURL}}" --rule "keepInventory={{GRKeepInventory}}" --rule "doFireTick={{GRDoFireTick}}" --rule "mobGriefing={{GRMobGriefing}}" --rule "doDaylightCycle={{GRDoDaylightCycle}}" --rule "doWeatherCycle={{GRDoWeatherCycle}}" --rule "doMobSpawning={{GRDoMobSpawning}}" --rule "doInsomnia={{GRDoInsomnia}}" --rule "doImmediateRespawn={{GRDoImmediateRespawn}}" --rule "announceAdvancements={{GRAnnounceAdvancements}}" --rule "showDeathMessages={{GRShowDeathMessages}}" --rule "naturalRegeneration={{GRNaturalRegeneration}}" --rule "doTraderSpawning={{GRDoTraderSpawning}}" --rule "doPatrolSpawning={{GRDoPatrolSpawning}}" --rule "playersSleepingPercentage={{GRPlayersSleepingPercentage}}" --rule "randomTickSpeed={{GRRandomTickSpeed}}" --rule "spawnRadius={{GRSpawnRadius}}" --rule-extra "{{GRExtra}}" --sleep "{{SleepEnabled}}" --sleep-idle "{{SleepIdleMinutes}}" --sleep-start-asleep "{{SleepStartAsleep}}" --sleep-motd "{{SleepMotd}}" --sleep-starting-motd "{{SleepStartingMotd}}" --sleep-kick "{{SleepKickMessage}}" -- {{JvmArgs}}
 App.UseLinuxIOREDIR=False
 App.AppSettings={}
 App.EnvironmentVariables={}
@@ -79,7 +79,7 @@ App.MonitorChildProcess=False
 App.DumpFullChildProcessTree=False
 App.MonitorChildProcessWaitMs=100
 App.MonitorChildProcessName=
-App.SupportsUniversalSleep=True
+App.SupportsUniversalSleep=False
 App.WakeupMode=Any
 App.ApplicationReadyMode=RegexMatch
 Console.FilterMatchRegex=\e\[(\d+;)*(\d+)?[ABCDHJKfmsu]|\e\[?[?\>\=\da-z]+
@@ -94,7 +94,7 @@ Console.MetricsRegex=
 Console.SuppressLogAtStart=False
 Console.ActivateLogRegex=
 Console.UserActions={}
-Limits.SleepMode=True
+Limits.SleepMode=False
 Limits.SleepOnStart=False
 Limits.SleepDelayMinutes=15
 Limits.DozeDelay=2

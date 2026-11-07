@@ -83,6 +83,7 @@ The instance's **Configuration → Minecraft Server** page is the one place to c
 | World | world folder name, seed, world type, structures, Nether |
 | Performance | view distance, simulation distance, watchdog timeout |
 | More Properties | hide player list, signed chat, resource pack, chunk writes, world border, entity range, compression, plus **Extra server.properties** for any other key |
+| Sleep | sleep when empty, minutes before sleeping, start asleep, the sleeping/waking messages (see below) |
 | Game Rules | keep inventory, fire spread, mob griefing, daylight/weather cycle, mob spawning, phantoms, instant respawn, announcements, death messages, regeneration, traders, patrols, sleeping percentage, random tick speed, spawn radius, plus **Other Game Rules** for any other rule |
 
 Everything applies the next time the server starts.
@@ -101,8 +102,7 @@ Everything applies the next time the server starts.
 Use the **[MOTD Workbench](https://claude.ai/artifact/NSTcMdVkFBP7CfSHSQd4x3)** (the same page is
 `motd-editor.html` in this repo). It has colour and effect buttons, a rainbow tool, centring, a
 width meter and a live preview drawn like the multiplayer list. Copy its output into **Message of
-the Day**. The output uses `§` colour codes and `
-` for the second line, which is the safe
+the Day**. The output uses `\u00A7` colour codes and `\n` for the second line, which is the safe
 form for both AMP and Java. Only the 16 classic colours and 5 effects work in `server.properties`.
 
 ### Server icon
@@ -119,6 +119,38 @@ AMP values win, and **Leave as is** keeps whatever the world has. Each rule runs
 so a rule your Minecraft version doesn't know only skips itself. This works on Minecraft
 1.16.2 to 1.21.10. On other versions, set rules in the console, e.g. `gamerule keepInventory true`.
 Clearing every game rule setting removes the datapack again.
+
+### Sleep when empty
+
+With **Sleep When Empty** on (the default), the server shuts itself down after **Minutes Before
+Sleeping** with nobody online, and starts again when someone joins from Minecraft:
+
+- While asleep, the Java server process is gone. Only a ~40 MB watcher stays, so the RAM and CPU are free for your other instances.
+- The server stays in everyone's multiplayer list with the **Sleeping MOTD**, its icon and its version.
+- The first player to join wakes it. They see **Waking Up Message** and join again once it's up.
+  Big packs take a minute or two. During that time the list shows the **Waking Up MOTD**.
+- Server-list pings don't wake it. Only a real join does, and when the whitelist is on, only a
+  whitelisted player or op.
+- AMP shows the instance as running the whole time, and the console stays live. While asleep it
+  answers `!wake` (start now), `!sleep` (sleep now if empty) and `!status`. Other commands typed
+  while asleep are not run. **Stop**, **Restart** and **Update** work the same as without sleep.
+- **Start Asleep** makes AMP's Start skip booting the server until someone joins. That's handy when the
+  host restarts and AMP brings every instance back.
+
+How it works: AMP starts `AmpSleep` (a small Java program, source in `sleep/AmpSleep.java`), not the server.
+It listens on the instance's port. It runs the real server as a child process on a private port and passes
+connections through, counting players. This is also why AMP's own *Sleep Mode* is turned off in this template.
+AMP's version stops the whole app and only works for servers that boot in seconds.
+
+Things to know:
+
+- The server sees every player coming from `127.0.0.1`, so IP bans don't work. With playit.gg
+  that was already the case.
+- Scheduled AMP backups don't wake a sleeping server. A scheduled restart boots it (unless
+  **Start Asleep** is on), and it falls asleep again once the idle time passes.
+- The jar is downloaded once from this repo's GitHub release `amp-sleep-1.0.0` and checked against
+  a SHA-256 in `ampmodpack.sh`. If that fails, the server starts normally without sleep, with a
+  warning in the console.
 
 ## 4. Update a pack
 
@@ -184,6 +216,8 @@ The world isn't touched by a failed update. Read the last lines of the AMP conso
 | `The server is still running` | Stop the server first. |
 | Forge/NeoForge installer fails | Usually a Java mismatch. For packs on Minecraft 1.16.5 and older, set **Java Version** to *Java 8*; for 1.17–1.20.4, *Java 17*. Then Update. |
 | Server crashes on start with a client-only class error (e.g. `net/minecraft/client/...`) | A client-only mod slipped through. Add its slug to **Extra Mods To Exclude** and Update. |
+| `Unknown start option: --sleep` (or `Ignoring unknown start option`) when starting | The template is newer than the instance's script. Press **Update** once. |
+| `Could not open port ...` from `[AMP Sleep]` | Something else uses the port, often a server left over from a crash. The script stops a leftover server automatically on the next start. Otherwise, check with `ss -ltnp`. |
 | Anything strange after a half-finished update | Tick **Repair On Next Update**, press Update, then untick it. |
 
 To roll back a bad pack version: set **Pinned Version** to the previous file ID and Update.
@@ -233,6 +267,7 @@ Repo (flat, lowercase, as AMP requires):
 | `curseforge-modpackmetaconfig.json` | Empty. AMP doesn't rewrite `server.properties`; only the port is set, on each start |
 | `manifest.json` | Identifies this repo to AMP |
 | `ampmodpack.sh` | Does the actual work (install/update/start/status) |
+| `sleep/AmpSleep.java`, `sleep/build.sh` | Source of the sleep supervisor. `build.sh` makes the release jar; the same source gives the same jar. |
 
 Inside an instance:
 
@@ -240,7 +275,7 @@ Inside an instance:
 curseforge-modpack/
   server/            the Minecraft server (world, mods, config, server.properties)
     manual-downloads/  drop files here for mods that block automated downloads
-  tools/             ampmodpack.sh, java/<version>, mc-image-helper/<version>, state/
+  tools/             ampmodpack.sh, amp-sleep-<version>.jar, java/<version>, mc-image-helper/<version>, state/
   backups/           pre-update-*.tar.gz
   pack-new-configs/  the pack's new copies of configs you edited
 ```
@@ -253,3 +288,9 @@ directly, so AMP owns the Java process (console, `stop`, CPU/RAM graphs):
 - **NeoForge, and Forge 1.17+**: `java -Xms.. -Xmx.. <JVM args> @libraries/net/<loader>/<version>/unix_args.txt nogui`. The `unix_args.txt` path is read from the `run.sh` the installer generated. The installer's `user_jvm_args.txt` is ignored; use **Max RAM** and **Extra JVM Arguments** instead.
 - **Forge 1.16.5 and older**: `java ... -jar forge-<version>.jar nogui`
 - **Fabric**: `java ... -jar <fabric server launcher>.jar nogui`
+
+With **Sleep When Empty** on, the same Java command is handed to the sleep supervisor rather than exec'd:
+`java -Xmx48M -jar amp-sleep-<v>.jar --port <AMP port> ... -- setpriv --pdeathsig TERM -- java -Xmx.. ... nogui`.
+The supervisor is what AMP sees; it forwards the console and `stop`. Before each launch it rewrites
+`server-port` to a free private port. `setpriv` makes sure the server gets a clean `SIGTERM` if the
+supervisor is ever killed. Without sleep, `server-port` goes back to the AMP port on the next start.

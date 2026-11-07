@@ -8,7 +8,9 @@
 #
 # Subcommands:
 #   update  install the modpack the first time, or upgrade/repair it (AMP "Update" button)
-#   start   launch the server (AMP "Start" button); execs java so AMP owns the process
+#   start   launch the server (AMP "Start" button); execs java so AMP owns the process. With sleep
+#           on, it execs the AmpSleep supervisor instead, which owns the port and runs the server
+#           as a child, stopping it when nobody is online and starting it when someone joins.
 #   status  print what is installed (for troubleshooting from a shell)
 #
 # The CurseForge API key is optional. When set (AMP setting or curseforge-api-key.txt) and accepted
@@ -18,8 +20,12 @@
 set -Eeuo pipefail
 umask 022
 
-SCRIPT_VERSION="1.2.0"
+SCRIPT_VERSION="1.3.0"
 DEFAULT_HELPER_VERSION="1.76.0"
+# Sleep supervisor (source in sleep/AmpSleep.java), downloaded from a GitHub release and checked.
+SLEEP_VERSION="1.0.0"
+SLEEP_SHA256="b258dce6b24e5d149b1bbbf4186d7bfa54e7abf8b25683a3eea125e1a276d5bc"
+SLEEP_URL="https://github.com/Standardan/amp-curseforge-modpacks/releases/download/amp-sleep-${SLEEP_VERSION}/amp-sleep.jar"
 DEFAULT_EXCLUDE_FILE="https://raw.githubusercontent.com/itzg/docker-minecraft-server/master/files/cf-exclude-include.json"
 
 TOOLS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -230,11 +236,49 @@ manifest_files() { # list of files the helper installed (relative to server dir)
 }
 
 server_running() {
+  child_server_pid >/dev/null && return 0
   [[ -f "$PID_FILE" ]] || return 1
   local pid; pid="$(cat "$PID_FILE" 2>/dev/null || true)"
   [[ "$pid" =~ ^[0-9]+$ ]] || return 1
   kill -0 "$pid" 2>/dev/null || return 1
   grep -qa java "/proc/$pid/cmdline" 2>/dev/null
+}
+
+child_server_pid() { # prints the PID of a server started by the sleep supervisor, if still alive
+  local f="$STATE_DIR/server-child.pid" pid
+  [[ -f "$f" ]] || return 1
+  pid="$(cat "$f" 2>/dev/null || true)"
+  [[ "$pid" =~ ^[0-9]+$ ]] && kill -0 "$pid" 2>/dev/null || return 1
+  grep -qa java "/proc/$pid/cmdline" 2>/dev/null || return 1
+  [[ "$(readlink -f "/proc/$pid/cwd" 2>/dev/null)" == "$(readlink -f "$SERVER_DIR")" ]] || return 1
+  echo "$pid"
+}
+
+stop_leftover_server() { # a server whose supervisor was killed (e.g. SIGKILL) would hold the world
+  local pid i
+  pid="$(child_server_pid)" || { rm -f "$STATE_DIR/server-child.pid"; return 0; }
+  warn "A server from the previous run (PID $pid) is still running - stopping it before starting again."
+  kill -TERM "$pid" 2>/dev/null || true
+  for i in $(seq 1 120); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+  kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
+  rm -f "$STATE_DIR/server-child.pid"
+}
+
+ensure_sleep_jar() { # prints the jar path, or returns 1 (sleep then stays off for this start)
+  local jar="$TOOLS_DIR/amp-sleep-${SLEEP_VERSION}.jar" tmp sum
+  if [[ -f "$jar" ]]; then echo "$jar"; return 0; fi
+  tmp="$(mktemp "$TOOLS_DIR/.amp-sleep.XXXXXX")"
+  if ! fetch "$SLEEP_URL" "$tmp" 2>/dev/null; then
+    rm -f "$tmp"; warn "Could not download the sleep supervisor from $SLEEP_URL"; return 1
+  fi
+  if command -v sha256sum >/dev/null 2>&1; then
+    sum="$(sha256sum "$tmp" | awk '{print $1}')"
+    if [[ "$sum" != "$SLEEP_SHA256" ]]; then
+      rm -f "$tmp"; warn "The downloaded sleep supervisor failed its checksum (got $sum)"; return 1
+    fi
+  fi
+  mv -f "$tmp" "$jar"
+  echo "$jar"
 }
 
 set_property() { # set_property FILE KEY VALUE   (edit in place, keep every other line)
@@ -686,6 +730,7 @@ apply_gamerules() { # apply_gamerules MC_VERSION rule=value...
 # ---------------------------------------------------------------------------------------------
 cmd_start() {
   local java_choice="auto" java_path="" ram="" port="" eula="false" props=() rules=() icon_url=""
+  local sleep_on="true" sleep_idle="15" sleep_asleep="false" sleep_motd="" sleep_starting="" sleep_kick=""
   local x
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -705,8 +750,15 @@ cmd_start() {
         for x in "${_extra[@]}"; do x="$(trim "$x")"; [[ -n "$x" ]] && rules+=("$x"); done
         shift 2 ;;
       --icon) icon_url="$(trim "$(clean "${2-}")")"; shift 2 ;;
+      --sleep) sleep_on="$(clean "${2-}")"; shift 2 ;;
+      --sleep-idle) sleep_idle="$(trim "$(clean "${2-}")")"; shift 2 ;;
+      --sleep-start-asleep) sleep_asleep="$(clean "${2-}")"; shift 2 ;;
+      --sleep-motd) sleep_motd="$(clean "${2-}")"; shift 2 ;;
+      --sleep-starting-motd) sleep_starting="$(clean "${2-}")"; shift 2 ;;
+      --sleep-kick) sleep_kick="$(clean "${2-}")"; shift 2 ;;
       --) shift; break ;;
-      *) die "Unknown start option: $1" ;;
+      # Unknown options (a newer template with an older script) are skipped, not fatal.
+      *) warn "Ignoring unknown start option $1 (press Update to get the newest script)"; shift 2 ;;
     esac
   done
   local jvm_args=()
@@ -751,11 +803,34 @@ cmd_start() {
   fi
 
   mkdir -p "$STATE_DIR"
+  stop_leftover_server
   echo $$ > "$PID_FILE"
   cd "$SERVER_DIR"
   log "Starting $MODPACK_NAME $MODPACK_VERSION (Minecraft $MC_VERSION, $MOD_LOADER) with Java $have, ${ram} MB"
   # shellcheck disable=SC2086
-  exec "$java" "-Xms${xms}M" "-Xmx${ram}M" "${jvm_args[@]}" $LAUNCH nogui 3>&-
+  local server_cmd=("$java" "-Xms${xms}M" "-Xmx${ram}M" "${jvm_args[@]}" $LAUNCH nogui)
+
+  local sleep_jar=""
+  if is_true "${sleep_on:-true}"; then
+    sleep_jar="$(ensure_sleep_jar)" || { sleep_jar=""; warn "Starting without sleep mode this time."; }
+  fi
+  if [[ -z "$sleep_jar" ]]; then
+    exec "${server_cmd[@]}" 3>&-
+  fi
+
+  # Sleep mode: the supervisor listens on the AMP port and runs the server on a private port.
+  [[ "$sleep_idle" =~ ^[0-9]+([.][0-9]+)?$ ]] || { warn "Invalid sleep delay '$sleep_idle', using 15 minutes"; sleep_idle=15; }
+  local idle_seconds; idle_seconds="$(awk -v m="$sleep_idle" 'BEGIN { printf "%d", m * 60 }')"
+  # If the supervisor is killed outright, the kernel sends the server SIGTERM (a clean save + stop).
+  local guard=()
+  if command -v setpriv >/dev/null 2>&1 && setpriv --help 2>&1 | grep -q pdeathsig; then
+    guard=(setpriv --pdeathsig TERM --)
+  fi
+  exec "$java" -XX:+IgnoreUnrecognizedVMOptions -Xms8M -Xmx48M -Xss512k -XX:+UseSerialGC -XX:TieredStopAtLevel=1 \
+    -jar "$sleep_jar" --port "$port" --idle-seconds "$idle_seconds" --start-asleep "$sleep_asleep" \
+    --motd-sleeping "$sleep_motd" --motd-starting "$sleep_starting" --kick-message "$sleep_kick" \
+    --mc-version "$MC_VERSION" --state-dir "$STATE_DIR" --properties "$SERVER_DIR/server.properties" \
+    -- "${guard[@]}" "${server_cmd[@]}" 3>&-
 }
 
 cmd_status() {
