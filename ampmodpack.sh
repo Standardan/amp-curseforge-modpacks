@@ -11,13 +11,14 @@
 #   start   launch the server (AMP "Start" button); execs java so AMP owns the process
 #   status  print what is installed (for troubleshooting from a shell)
 #
-# The CurseForge API key is passed by AMP as an argument and handed to mc-image-helper through
-# the CF_API_KEY environment variable. It is never written to disk by this script.
+# The CurseForge API key is optional. When set (AMP setting or curseforge-api-key.txt) and accepted
+# by CurseForge it is handed to mc-image-helper through CF_API_KEY; otherwise mc-image-helper uses
+# its own built-in key. This script never writes the key to disk or prints it.
 
 set -Eeuo pipefail
 umask 022
 
-SCRIPT_VERSION="1.0.2"
+SCRIPT_VERSION="1.0.3"
 DEFAULT_HELPER_VERSION="1.76.0"
 DEFAULT_EXCLUDE_FILE="https://raw.githubusercontent.com/itzg/docker-minecraft-server/master/files/cf-exclude-include.json"
 
@@ -290,7 +291,9 @@ pre_update_backup() { # pre_update_backup KEEP
 API_KEY_FILE_NAME="curseforge-api-key.txt"   # optional, in the instance's curseforge-modpack/ folder
 
 api_probe() { # api_probe KEY -> HTTP status code from CurseForge ("" if unreachable)
-  local key="$1" url="https://api.curseforge.com/v1/games/432"
+  # A mod search: some personal keys are accepted by other endpoints but refused here,
+  # and this is the first thing mc-image-helper does with the key.
+  local key="$1" url="https://api.curseforge.com/v1/mods/search?gameId=432&slug=jei&classId=6"
   if command -v curl >/dev/null 2>&1; then
     curl -s -o /dev/null -w '%{http_code}' --connect-timeout 20 -H "x-api-key: $key" -H 'Accept: application/json' "$url" || true
   elif command -v wget >/dev/null 2>&1; then
@@ -320,7 +323,10 @@ resolve_api_key() {
   if [[ -f "$file" ]]; then
     candidates+=("$(tr -d ' \t\r\n' < "$file")"); labels+=("API key from $API_KEY_FILE_NAME")
   fi
-  (( ${#candidates[@]} > 0 )) || die "No CurseForge API key. Set 'CurseForge API Key' in the instance settings (or put it in curseforge-modpack/$API_KEY_FILE_NAME), then Update again."
+  if (( ${#candidates[@]} == 0 )); then
+    log "No personal CurseForge API key set; using mc-image-helper's built-in key"
+    API_KEY=""; return 0
+  fi
 
   for i in "${!candidates[@]}"; do
     describe_key "${labels[$i]}" "${candidates[$i]}"
@@ -336,7 +342,9 @@ resolve_api_key() {
       API_KEY="${candidates[$i]}"; return 0
     fi
   done
-  die "CurseForge rejected the API key (HTTP $first_code). Copy it again from https://console.curseforge.com/ (API keys). If it is definitely right, put it in a text file named $API_KEY_FILE_NAME in the instance's curseforge-modpack/ folder and clear the setting."
+  warn "CurseForge refused your API key for mod searches (HTTP $first_code); using mc-image-helper's built-in key instead."
+  warn "To use your own key, check it at https://console.curseforge.com/ or clear the 'CurseForge API Key' setting to silence this."
+  API_KEY=""
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -477,7 +485,7 @@ cmd_update() {
     export JAVA_HOME="$helper_java_home"
     # The Forge/NeoForge installer is launched as plain "java" from PATH: use the server's Java
     PATH="$(dirname "$server_java"):$PATH"; export PATH
-    export CF_API_KEY="$api_key"
+    if [[ -n "$api_key" ]]; then export CF_API_KEY="$api_key"; else unset CF_API_KEY; fi
     exec "$helper/bin/mc-image-helper" "${args[@]}" 3>&-
   ) || rc=$?
 

@@ -21,7 +21,7 @@ Linux only. Tested target: Debian 12, AMP running instances in Docker containers
 
 The repo must be **public**. AMP's Configuration Repository setting has no field for GitHub
 credentials, and the Update step downloads `ampmodpack.sh` anonymously from
-`raw.githubusercontent.com`. Nothing secret lives in the repo: your CurseForge API key is stored only
+`raw.githubusercontent.com`. Nothing secret lives in the repo: an optional CurseForge API key is stored only
 in the instance's settings inside AMP.
 
 1. Log in to AMP's main (ADS) panel.
@@ -35,20 +35,26 @@ The template now appears in the application list when you create an instance, as
 After you change this repo, click **Fetch** again so AMP picks up the new template. `ampmodpack.sh`
 itself is downloaded fresh on every Update.
 
-## 2. Get a CurseForge API key
+## 2. CurseForge API key (optional)
 
-mc-image-helper needs your own key for the CurseForge ("Eternal") API.
+You normally don't need one. mc-image-helper's release builds include their own CurseForge API key,
+and that's what itzg's Docker image uses by default. Leave **CurseForge API Key** blank.
 
-1. Go to <https://console.curseforge.com/> and sign in (any CurseForge/Overwolf account works).
-2. Open **API keys** and copy your key. It looks like `$2a$10$...`. The `$` signs are part of the key.
-3. Paste it into the instance's **CurseForge API Key** setting. Never put it in this repo.
+Set your own key only if the built-in one stops working:
 
-   Alternative: leave the setting empty and save the key in a text file named `curseforge-api-key.txt`
-   in the instance's `curseforge-modpack/` folder (AMP's File Manager works). This keeps the key out of
-   AMP's logs: AMP logs setting changes in plain text, password fields included.
+1. Go to <https://console.curseforge.com/>, sign in, open **API keys** and copy your key. It looks
+   like `$2a$10$...`, 60 characters. The `$` signs are part of the key.
+2. Paste it into the instance's **CurseForge API Key** setting, or save it in a text file named
+   `curseforge-api-key.txt` in the instance's `curseforge-modpack/` folder. The file keeps the key
+   out of AMP's logs: AMP logs setting changes in plain text, password fields included. Never put it in this repo.
 
-   On every Update the template checks the key with CurseForge first and logs its length and its
-   first 7 characters (`$2a$10$`, the same for every key). It never logs the key itself.
+On every Update the template first tries your key on a CurseForge mod search. It logs the key's length and
+first 7 characters (`$2a$10$`, the same for every key), never the key itself. If CurseForge refuses
+it, the template warns and falls back to the built-in key.
+
+This fallback exists because some personal keys are accepted by parts of the API but refused with
+"API Key missing or invalid" on the mod search mc-image-helper needs. That happened during testing with a key
+that was otherwise valid.
 
 ## 3. Create a modpack instance
 
@@ -56,7 +62,7 @@ mc-image-helper needs your own key for the CurseForge ("Eternal") API.
 2. Open the instance. Under **Configuration → CurseForge Modpack**, set:
    - **Modpack**: the pack page URL, e.g. `https://www.curseforge.com/minecraft/modpacks/all-the-mods-10`, or just `all-the-mods-10`.
    - **Pinned Version**: blank for the latest release, or a file ID / file page URL / part of the file name.
-   - **CurseForge API Key**: from step 2.
+   - **CurseForge API Key**: leave blank (see step 2).
    - **Accept the Minecraft EULA**: tick it.
    - **Java Version**: leave it on *Automatic* unless you have a reason not to.
    - **Max RAM**: e.g. `8192` MB for ATM10.
@@ -123,8 +129,9 @@ The world isn't touched by a failed update. Read the last lines of the AMP conso
 
 | Message | Fix |
 |---|---|
-| `Set 'Modpack'...` / `Set 'CurseForge API Key'...` | Fill in the setting and Update again. |
-| `CurseForge rejected the API key` | Check the logged length (60) and prefix (`$2a$10$`). Copy the key again, or use the `curseforge-api-key.txt` file instead of the setting. |
+| `Set 'Modpack'...` | Fill in the setting and Update again. |
+| `CurseForge refused your API key for mod searches` | Only a warning: the built-in key is used instead. Clear the setting to silence it. |
+| HTTP 403 `forbidden or rate-limit` from mc-image-helper with the built-in key | CurseForge is refusing or rate-limiting the built-in key. Wait an hour and retry, or set your own working key (step 2). |
 | `Some mod authors disallow automated downloads` | Download each listed file from its CurseForge page and put it in `server/manual-downloads/mods/` (worlds: `manual-downloads/worlds/`), then Update again. |
 | `The server is still running` | Stop the server first. |
 | Forge/NeoForge installer fails | Usually a Java mismatch. For packs on Minecraft 1.16.5 and older, set **Java Version** to *Java 8*; for 1.17–1.20.4, *Java 17*. Then Update. |

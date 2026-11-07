@@ -29,17 +29,16 @@
         "EnumValues": {}
     },
     {
-        "DisplayName": "CurseForge API Key",
+        "DisplayName": "CurseForge API Key (optional)",
         "Category": "CurseForge Modpack:extension",
         "Subcategory": "Modpack:extension:1",
-        "Description": "Your personal API key from https://console.curseforge.com/ (see the template README). Only used during Update.",
+        "Description": "Leave blank to use mc-image-helper's built-in key (recommended). Only set your own key from https://console.curseforge.com/ if the built-in one stops working. A key CurseForge refuses for mod searches is ignored with a warning. Only used during Update.",
         "Keywords": "api,key,curseforge,CFApiKey",
         "FieldName": "CFApiKey",
         "InputType": "password",
         "ParamFieldName": "CFApiKey",
         "IncludeInCommandLine": false,
         "DefaultValue": "",
-        "Required": true,
         "EnumValues": {}
     },
     {
