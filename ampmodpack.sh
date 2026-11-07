@@ -17,7 +17,7 @@
 set -Eeuo pipefail
 umask 022
 
-SCRIPT_VERSION="1.0.0"
+SCRIPT_VERSION="1.0.1"
 DEFAULT_HELPER_VERSION="1.76.0"
 DEFAULT_EXCLUDE_FILE="https://raw.githubusercontent.com/itzg/docker-minecraft-server/master/files/cf-exclude-include.json"
 
@@ -285,6 +285,26 @@ pre_update_backup() { # pre_update_backup KEEP
 }
 
 # ---------------------------------------------------------------------------------------------
+# CurseForge API key check (gives a clear message instead of mc-image-helper's generic error)
+# ---------------------------------------------------------------------------------------------
+check_api_key() {
+  local key="$1" code="" url="https://api.curseforge.com/v1/games/432"
+  # Safe to show: every CurseForge key starts with "$2a$" and is ~60 characters long.
+  log "CurseForge API key: ${#key} characters, starts with '${key:0:4}'"
+  if command -v curl >/dev/null 2>&1; then
+    code="$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 20 -H "x-api-key: $key" -H 'Accept: application/json' "$url" || true)"
+  elif command -v wget >/dev/null 2>&1; then
+    code="$(wget -q -S -O /dev/null --timeout=20 --header="x-api-key: $key" --header='Accept: application/json' "$url" 2>&1 | awk '/^ *HTTP\//{c=$2} END{print c}' || true)"
+  fi
+  case "$code" in
+    200) log "CurseForge accepted the API key" ;;
+    401|403)
+      die "CurseForge rejected the API key (HTTP $code). Copy it again from https://console.curseforge.com/ (API keys), paste it into the 'CurseForge API Key' setting with no spaces, then Update again." ;;
+    *) warn "Could not verify the API key with CurseForge (HTTP '${code:-no response}'); trying anyway" ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------------------------
 # update
 # ---------------------------------------------------------------------------------------------
 cmd_update() {
@@ -318,6 +338,7 @@ cmd_update() {
   [[ -n "$source" ]]  || die "Set 'Modpack' (CurseForge page URL or slug) in the instance settings, then Update again."
   [[ -n "$api_key" ]] || die "Set 'CurseForge API key' in the instance settings, then Update again. See README: Getting a CurseForge API key."
   if server_running; then die "The server is still running. Stop it first, then Update."; fi
+  check_api_key "$api_key"
 
   mkdir -p "$SERVER_DIR" "$STATE_DIR" "$SERVER_DIR/manual-downloads"
 
