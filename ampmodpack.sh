@@ -17,7 +17,7 @@
 set -Eeuo pipefail
 umask 022
 
-SCRIPT_VERSION="1.0.1"
+SCRIPT_VERSION="1.0.2"
 DEFAULT_HELPER_VERSION="1.76.0"
 DEFAULT_EXCLUDE_FILE="https://raw.githubusercontent.com/itzg/docker-minecraft-server/master/files/cf-exclude-include.json"
 
@@ -287,21 +287,56 @@ pre_update_backup() { # pre_update_backup KEEP
 # ---------------------------------------------------------------------------------------------
 # CurseForge API key check (gives a clear message instead of mc-image-helper's generic error)
 # ---------------------------------------------------------------------------------------------
-check_api_key() {
-  local key="$1" code="" url="https://api.curseforge.com/v1/games/432"
-  # Safe to show: every CurseForge key starts with "$2a$" and is ~60 characters long.
-  log "CurseForge API key: ${#key} characters, starts with '${key:0:4}'"
+API_KEY_FILE_NAME="curseforge-api-key.txt"   # optional, in the instance's curseforge-modpack/ folder
+
+api_probe() { # api_probe KEY -> HTTP status code from CurseForge ("" if unreachable)
+  local key="$1" url="https://api.curseforge.com/v1/games/432"
   if command -v curl >/dev/null 2>&1; then
-    code="$(curl -s -o /dev/null -w '%{http_code}' --connect-timeout 20 -H "x-api-key: $key" -H 'Accept: application/json' "$url" || true)"
+    curl -s -o /dev/null -w '%{http_code}' --connect-timeout 20 -H "x-api-key: $key" -H 'Accept: application/json' "$url" || true
   elif command -v wget >/dev/null 2>&1; then
-    code="$(wget -q -S -O /dev/null --timeout=20 --header="x-api-key: $key" --header='Accept: application/json' "$url" 2>&1 | awk '/^ *HTTP\//{c=$2} END{print c}' || true)"
+    wget -q -S -O /dev/null --timeout=20 --header="x-api-key: $key" --header='Accept: application/json' "$url" 2>&1 \
+      | awk '/^ *HTTP\//{c=$2} END{print c}' || true
   fi
-  case "$code" in
-    200) log "CurseForge accepted the API key" ;;
-    401|403)
-      die "CurseForge rejected the API key (HTTP $code). Copy it again from https://console.curseforge.com/ (API keys), paste it into the 'CurseForge API Key' setting with no spaces, then Update again." ;;
-    *) warn "Could not verify the API key with CurseForge (HTTP '${code:-no response}'); trying anyway" ;;
-  esac
+}
+
+describe_key() { # describe_key LABEL KEY  - never prints the key itself
+  local label="$1" key="$2" odd
+  # "$2a$10$" is the same for every CurseForge key, so it is safe to show.
+  odd="$(printf '%s' "$key" | tr -d 'A-Za-z0-9./$' | od -An -c | tr -s ' ' | sed 's/^ //; s/ $//')"
+  log "$label: ${#key} characters (a real key has 60), starts with '${key:0:7}'${odd:+, unexpected characters: [$odd]}"
+}
+
+# Picks a working API key: the AMP setting as given, the setting with stray characters removed
+# (in case AMP escaped or quoted it), or the key file. Sets API_KEY.
+resolve_api_key() {
+  local setting="$1" file="$ROOT_DIR/$API_KEY_FILE_NAME" candidates=() labels=() i code first_code=""
+  if [[ -n "$setting" ]]; then
+    candidates+=("$setting"); labels+=("API key from the AMP setting")
+    local cleaned; cleaned="$(printf '%s' "$setting" | tr -cd 'A-Za-z0-9./$')"
+    if [[ "$cleaned" != "$setting" && -n "$cleaned" ]]; then
+      candidates+=("$cleaned"); labels+=("API key from the AMP setting, stray characters removed")
+    fi
+  fi
+  if [[ -f "$file" ]]; then
+    candidates+=("$(tr -d ' \t\r\n' < "$file")"); labels+=("API key from $API_KEY_FILE_NAME")
+  fi
+  (( ${#candidates[@]} > 0 )) || die "No CurseForge API key. Set 'CurseForge API Key' in the instance settings (or put it in curseforge-modpack/$API_KEY_FILE_NAME), then Update again."
+
+  for i in "${!candidates[@]}"; do
+    describe_key "${labels[$i]}" "${candidates[$i]}"
+    code="$(api_probe "${candidates[$i]}")"
+    [[ -n "$first_code" ]] || first_code="${code:-none}"
+    if [[ "$code" == 200 ]]; then
+      log "CurseForge accepted it"
+      API_KEY="${candidates[$i]}"; return 0
+    fi
+    log "CurseForge answered HTTP ${code:-'(no response)'}"
+    if [[ "$code" != 401 && "$code" != 403 ]]; then
+      warn "Could not verify the key with CurseForge; trying it anyway"
+      API_KEY="${candidates[$i]}"; return 0
+    fi
+  done
+  die "CurseForge rejected the API key (HTTP $first_code). Copy it again from https://console.curseforge.com/ (API keys). If it is definitely right, put it in a text file named $API_KEY_FILE_NAME in the instance's curseforge-modpack/ folder and clear the setting."
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -336,9 +371,8 @@ cmd_update() {
 
   log "ampmodpack $SCRIPT_VERSION - update"
   [[ -n "$source" ]]  || die "Set 'Modpack' (CurseForge page URL or slug) in the instance settings, then Update again."
-  [[ -n "$api_key" ]] || die "Set 'CurseForge API key' in the instance settings, then Update again. See README: Getting a CurseForge API key."
   if server_running; then die "The server is still running. Stop it first, then Update."; fi
-  check_api_key "$api_key"
+  resolve_api_key "$api_key"; api_key="$API_KEY"
 
   mkdir -p "$SERVER_DIR" "$STATE_DIR" "$SERVER_DIR/manual-downloads"
 

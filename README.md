@@ -43,6 +43,13 @@ mc-image-helper needs your own key for the CurseForge ("Eternal") API.
 2. Open **API keys** and copy your key. It looks like `$2a$10$...`. The `$` signs are part of the key.
 3. Paste it into the instance's **CurseForge API Key** setting. Never put it in this repo.
 
+   Alternative: leave the setting empty and save the key in a text file named `curseforge-api-key.txt`
+   in the instance's `curseforge-modpack/` folder (AMP's File Manager works). This keeps the key out of
+   AMP's logs: AMP logs setting changes in plain text, password fields included.
+
+   On every Update the template checks the key with CurseForge first and logs its length and its
+   first 7 characters (`$2a$10$`, the same for every key). It never logs the key itself.
+
 ## 3. Create a modpack instance
 
 1. In ADS: **Create Instance**, choose **!CF / Minecraft CurseForge Modpack**, give it a name, create it.
@@ -117,7 +124,7 @@ The world isn't touched by a failed update. Read the last lines of the AMP conso
 | Message | Fix |
 |---|---|
 | `Set 'Modpack'...` / `Set 'CurseForge API Key'...` | Fill in the setting and Update again. |
-| HTTP 403 / 401 from `api.curseforge.com` | The API key is wrong or was pasted with extra spaces. Copy it again. |
+| `CurseForge rejected the API key` | Check the logged length (60) and prefix (`$2a$10$`). Copy the key again, or use the `curseforge-api-key.txt` file instead of the setting. |
 | `Some mod authors disallow automated downloads` | Download each listed file from its CurseForge page and put it in `server/manual-downloads/mods/` (worlds: `manual-downloads/worlds/`), then Update again. |
 | `The server is still running` | Stop the server first. |
 | Forge/NeoForge installer fails | Usually a Java mismatch. For packs on Minecraft 1.16.5 and older, set **Java Version** to *Java 8*; for 1.17–1.20.4, *Java 17*. Then Update. |
