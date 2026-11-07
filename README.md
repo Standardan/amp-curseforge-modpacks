@@ -30,7 +30,7 @@ in the instance's settings inside AMP.
 4. Click **Fetch**, then refresh the browser page.
 
 The template now appears in the application list when you create an instance, as
-**!Minecraft CurseForge Modpack** (the `!` sorts it to the top) (with this repo's `CF` prefix).
+**!CF / Minecraft CurseForge Modpack** (the repo prefix `!CF` sorts it to the top).
 
 After you change this repo, click **Fetch** again so AMP picks up the new template. `ampmodpack.sh`
 itself is downloaded fresh on every Update.
@@ -45,7 +45,7 @@ mc-image-helper needs your own key for the CurseForge ("Eternal") API.
 
 ## 3. Create a modpack instance
 
-1. In ADS: **Create Instance**, choose **!Minecraft CurseForge Modpack**, give it a name, create it.
+1. In ADS: **Create Instance**, choose **!CF / Minecraft CurseForge Modpack**, give it a name, create it.
 2. Open the instance. Under **Configuration → CurseForge Modpack**, set:
    - **Modpack**: the pack page URL, e.g. `https://www.curseforge.com/minecraft/modpacks/all-the-mods-10`, or just `all-the-mods-10`.
    - **Pinned Version**: blank for the latest release, or a file ID / file page URL / part of the file name.

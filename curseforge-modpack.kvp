@@ -1,4 +1,4 @@
-Meta.DisplayName=!Minecraft CurseForge Modpack
+Meta.DisplayName=Minecraft CurseForge Modpack
 Meta.Description=Installs and updates any CurseForge Minecraft modpack (Forge, NeoForge, Fabric) using itzg's mc-image-helper
 Meta.OS=Linux
 Meta.AarchSupport=Native
@@ -21,7 +21,7 @@ Meta.Prerequisites=[]
 Meta.ExtraContainerPackages=[]
 Meta.ConfigReleaseState=NotSpecified
 Meta.NoCommercialUsage=False
-Meta.ConfigVersion=2
+Meta.ConfigVersion=3
 Meta.ReleaseNotes=
 Meta.BreakingReleaseNotes=
 Meta.AppConfigId=d4641505-a012-4c25-92f5-cc5ebc62f4c7

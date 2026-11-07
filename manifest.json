@@ -4,6 +4,6 @@
 	"origin": "https://github.com/Standardan/amp-curseforge-modpacks.git",
 	"url": "https://github.com/Standardan/amp-curseforge-modpacks",
 	"imagefile": "",
-	"prefix": "CF",
+	"prefix": "!CF",
 	"repotype": "AppTemplates"
 }
