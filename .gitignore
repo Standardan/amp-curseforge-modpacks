@@ -1,0 +1,4 @@
+# never commit secrets or local test output
+*.key
+.env
+work/

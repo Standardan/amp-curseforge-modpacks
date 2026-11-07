@@ -1,0 +1,9 @@
+[
+    {
+        "Protocol": "TCP",
+        "Port": 25565,
+        "Ref": "ServerPort",
+        "Name": "Minecraft Port",
+        "Description": "Port players connect to. Point your playit.gg tunnel at 127.0.0.1 and this port."
+    }
+]

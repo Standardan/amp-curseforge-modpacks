@@ -1,0 +1,193 @@
+# AMP template: Minecraft CurseForge Modpack
+
+A custom template for [AMP](https://cubecoders.com/AMP)'s Generic module. It installs and updates any
+CurseForge Minecraft modpack (Forge, NeoForge or Fabric) from AMP's own **Update** button. The install
+engine is [itzg/mc-image-helper](https://github.com/itzg/mc-image-helper) `install-curseforge`, the same
+engine the `itzg/minecraft-server` Docker image uses for `AUTO_CURSEFORGE`. You don't need Docker
+for this. The instance gets AMP's normal console, backups, scheduler and start/stop.
+
+What one Update does:
+
+1. Downloads `ampmodpack.sh` (this repo), a Java runtime (Eclipse Temurin) and mc-image-helper into the instance.
+2. Backs up the world and configs (from the second update onwards).
+3. Downloads the modpack (latest release or a pinned version), its server-side mods and the right Forge/NeoForge/Fabric loader.
+4. Removes mods the new version dropped, keeps the files you edited, and works out the start command.
+
+Linux only. Tested target: Debian 12, AMP running instances in Docker containers.
+
+---
+
+## 1. Add this repo to AMP
+
+The repo must be **public**. AMP's Configuration Repository setting has no field for GitHub
+credentials, and the Update step downloads `ampmodpack.sh` anonymously from
+`raw.githubusercontent.com`. Nothing secret lives in the repo: your CurseForge API key is stored only
+in the instance's settings inside AMP.
+
+1. Log in to AMP's main (ADS) panel.
+2. Go to **Configuration → Instance Deployment**.
+3. Under **Configuration Repositories**, add `Standardan/amp-curseforge-modpacks:main`.
+4. Click **Fetch**, then refresh the browser page.
+
+The template now appears in the application list when you create an instance, as
+**Minecraft CurseForge Modpack** (with this repo's `CF` prefix).
+
+After you change this repo, click **Fetch** again so AMP picks up the new template. `ampmodpack.sh`
+itself is downloaded fresh on every Update.
+
+## 2. Get a CurseForge API key
+
+mc-image-helper needs your own key for the CurseForge ("Eternal") API.
+
+1. Go to <https://console.curseforge.com/> and sign in (any CurseForge/Overwolf account works).
+2. Open **API keys** and copy your key. It looks like `$2a$10$...`. The `$` signs are part of the key.
+3. Paste it into the instance's **CurseForge API Key** setting. Never put it in this repo.
+
+## 3. Create a modpack instance
+
+1. In ADS: **Create Instance**, choose **Minecraft CurseForge Modpack**, give it a name, create it.
+2. Open the instance. Under **Configuration → CurseForge Modpack**, set:
+   - **Modpack**: the pack page URL, e.g. `https://www.curseforge.com/minecraft/modpacks/all-the-mods-10`, or just `all-the-mods-10`.
+   - **Pinned Version**: blank for the latest release, or a file ID / file page URL / part of the file name.
+   - **CurseForge API Key**: from step 2.
+   - **Accept the Minecraft EULA**: tick it.
+   - **Java Version**: leave it on *Automatic* unless you have a reason not to.
+   - **Max RAM**: e.g. `8192` MB for ATM10.
+3. The game port is under the instance's **Configuration → Network/Ports** (AMP picks a free one).
+   Point your playit.gg tunnel at `127.0.0.1:<that port>`.
+4. Press **Update**. The first install of a large pack takes several minutes; progress shows in the console.
+5. Press **Start**. AMP shows *Running* once the server prints `Done (...)! For help, type "help"`.
+   **Stop** sends `stop`, so the world is saved properly.
+
+## 4. Update a pack
+
+Stop the server, then press **Update**. That's all:
+
+- **Pinned Version blank**: you get the newest release of the pack.
+- **Pinned Version set**: you get exactly that version. This is also how you roll back. Set the
+  previous file ID and press Update. The update log prints the installed file ID, e.g. `Installed: All the Mods 10 4.14 (file 6834521)`.
+- If nothing changed, Update finishes quickly and touches nothing.
+
+You can schedule it with AMP's scheduler (for example a nightly *Stop → Update → Start*), but
+reading the pack's changelog first is safer for big packs.
+
+### What is kept and what changes
+
+| What | On update |
+|---|---|
+| World (`world/`, `world_nether/`, `world_the_end/`, or your `level-name`) | Never touched. Even world folders shipped in the pack's overrides are skipped if the world exists. |
+| `server.properties`, `ops.json`, `whitelist.json`, `banned-*.json`, `usercache.json`, `eula.txt` | Always kept. Only `server-port` in `server.properties` is set from AMP's port setting on each start. |
+| Pack mods (`mods/*.jar` that the pack installed) | Updated, added or **removed** to match the new pack version. |
+| Mods you added yourself to `mods/` | Kept. The tool only removes files it installed. |
+| Pack config files you **didn't** edit | Replaced with the new pack version. |
+| Pack config files you **did** edit | Kept (with the default *Keep files I changed* setting). The pack's new copy is saved in `pack-new-configs/` so you can merge changes by hand. |
+
+How it decides you edited a file: after each successful update it records a SHA-256 of every
+non-mod file the pack installed (`tools/state/pack-files.sha256`). On the next update, any of
+those files whose content differs was changed by you, and it gets put back after the pack is
+installed. The other modes:
+
+- **Never overwrite any existing file**: runs mc-image-helper with `--overrides-skip-existing`. The pack never updates a config that already exists. Safe, but you miss config fixes the pack author ships.
+- **Always use the pack's files**: plain mc-image-helper behaviour. Pack files overwrite your edits (the server-operator files in the table above are still kept).
+
+### How mc-image-helper handles removed and changed mods
+
+This comes from reading mc-image-helper 1.76.0 (`CurseForgeInstaller`, `OverridesFromZipApplier`, `Manifests`):
+
+- It keeps a manifest of everything it installed in `server/.curseforge-manifest.json`: the pack's
+  mod files plus every file it copied from the pack's `overrides/` folder, and the pack/Minecraft/loader versions.
+- **Same version requested and every file still present**: it reports "already installed" and changes nothing (apart from confirming the loader).
+- **New version**: it downloads each mod file in the new manifest. It skips mods that CurseForge
+  marks client-only, plus anything on the exclude list. It copies `overrides/` over the server
+  directory, overwriting existing files, except inside an existing world. Then it installs/upgrades the loader.
+- **Then cleanup**: every file listed in the *old* manifest but not the *new* one is deleted.
+  That's how removed mods, and config files the pack stopped shipping, disappear. Files it never installed are never deleted.
+- **Changed mods**: CurseForge mod jars have the version in the file name. An updated mod is a new
+  file and the old file is removed by the cleanup above.
+- **Loader**: if the Forge/NeoForge/Fabric version changed, it reruns the official installer. The old
+  loader's files in `libraries/` are left behind. That's harmless: the start command always uses the
+  version the current `run.sh` points to. It only costs some disk space over many upgrades.
+- **Mods whose authors block third-party downloads**: the install stops and lists them (also in
+  `server/MODS_NEED_DOWNLOAD.txt`). See below.
+
+## 5. If an update fails
+
+The world isn't touched by a failed update. Read the last lines of the AMP console (`[modpack]` lines come from this template):
+
+| Message | Fix |
+|---|---|
+| `Set 'Modpack'...` / `Set 'CurseForge API Key'...` | Fill in the setting and Update again. |
+| HTTP 403 / 401 from `api.curseforge.com` | The API key is wrong or was pasted with extra spaces. Copy it again. |
+| `Some mod authors disallow automated downloads` | Download each listed file from its CurseForge page and put it in `server/manual-downloads/mods/` (worlds: `manual-downloads/worlds/`), then Update again. |
+| `The server is still running` | Stop the server first. |
+| Forge/NeoForge installer fails | Usually a Java mismatch. For packs on Minecraft 1.16.5 and older, set **Java Version** to *Java 8*; for 1.17–1.20.4, *Java 17*. Then Update. |
+| Server crashes on start with a client-only class error (e.g. `net/minecraft/client/...`) | A client-only mod slipped through. Add its slug to **Extra Mods To Exclude** and Update. |
+| Anything strange after a half-finished update | Tick **Repair On Next Update**, press Update, then untick it. |
+
+To roll back a bad pack version: set **Pinned Version** to the previous file ID and Update.
+
+To restore the world/configs from a pre-update backup, stop the server and run this over SSH as root
+(replace `<Instance>` and the backup name):
+
+```bash
+cd /home/amp/.ampdata/instances/<Instance>/curseforge-modpack/server
+mv world world.broken-$(date +%s)
+tar -xzf ../backups/pre-update-YYYYMMDD-HHMMSS.tar.gz
+chown -R --reference=. .
+```
+
+The `tar` command restores the world, config folders, `server.properties`, ops and whitelist exactly
+as they were before that update. Use `tar -tzf <file>` first to see what's inside.
+
+To see what's installed: `bash /home/amp/.ampdata/instances/<Instance>/curseforge-modpack/tools/ampmodpack.sh status`
+
+## 6. Backup plan
+
+Two layers:
+
+1. **Automatic pre-update snapshot (this template).** With **Back Up Before Updating** on (the default),
+   every Update of an installed pack first writes `backups/pre-update-<date>.tar.gz`. It contains
+   the world, `config/`, `defaultconfigs/`, `kubejs/`, `server.properties`, ops, whitelist and bans,
+   and keeps the newest 3 (configurable). It lives next to the server folder, not inside it.
+2. **AMP's own backups** for everything else. In the instance, use **Backups** to take one by hand
+   before risky changes. Under **Schedule**, add a daily *Take a backup* trigger. If you schedule
+   automatic updates, put *Take a backup* before *Update* in the same schedule. AMP's backups cover the whole instance
+   including mods, so they are the full rollback; the pre-update snapshot is the quick one.
+
+Large worlds make the pre-update snapshot slow. If you rely on AMP's scheduled backups only, turn **Back Up Before Updating** off.
+
+---
+
+## Files and layout
+
+Repo (flat, lowercase, as AMP requires):
+
+| File | Purpose |
+|---|---|
+| `curseforge-modpack.kvp` | Template: start command, console regexes, stop method, ports, update stages |
+| `curseforge-modpackconfig.json` | The settings page |
+| `curseforge-modpackupdates.json` | Update stages: fetch `ampmodpack.sh`, then run `ampmodpack.sh update` |
+| `curseforge-modpackports.json` | The Minecraft TCP port |
+| `curseforge-modpackmetaconfig.json` | Empty. AMP doesn't rewrite `server.properties`; only the port is set, on each start |
+| `manifest.json` | Identifies this repo to AMP |
+| `ampmodpack.sh` | Does the actual work (install/update/start/status) |
+
+Inside an instance:
+
+```
+curseforge-modpack/
+  server/            the Minecraft server (world, mods, config, server.properties)
+    manual-downloads/  drop files here for mods that block automated downloads
+  tools/             ampmodpack.sh, java/<version>, mc-image-helper/<version>, state/
+  backups/           pre-update-*.tar.gz
+  pack-new-configs/  the pack's new copies of configs you edited
+```
+
+## How starting works
+
+`ampmodpack.sh start` runs from AMP, sets `server-port`, writes `eula.txt`, then **execs** Java
+directly, so AMP owns the Java process (console, `stop`, CPU/RAM graphs):
+
+- **NeoForge, and Forge 1.17+**: `java -Xms.. -Xmx.. <JVM args> @libraries/net/<loader>/<version>/unix_args.txt nogui`. The `unix_args.txt` path is read from the `run.sh` the installer generated. The installer's `user_jvm_args.txt` is ignored; use **Max RAM** and **Extra JVM Arguments** instead.
+- **Forge 1.16.5 and older**: `java ... -jar forge-<version>.jar nogui`
+- **Fabric**: `java ... -jar <fabric server launcher>.jar nogui`

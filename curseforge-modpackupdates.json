@@ -1,0 +1,18 @@
+[
+    {
+        "UpdateStageName": "Fetch modpack tools",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "/bin/bash",
+        "UpdateSourceArgs": "-c \"mkdir -p '{{$FullRootDir}}tools' '{{$FullRootDir}}server' && cd '{{$FullRootDir}}tools' && u='{{ToolsScriptURL}}' && { if command -v curl >/dev/null 2>&1; then curl -fsSL --retry 3 -o ampmodpack.sh.new \\\"$u\\\"; else wget -q --tries=3 -O ampmodpack.sh.new \\\"$u\\\"; fi; } && head -n1 ampmodpack.sh.new | grep -q bash && mv -f ampmodpack.sh.new ampmodpack.sh && chmod +x ampmodpack.sh && echo 'Fetched ampmodpack.sh' || { echo 'Could not download ampmodpack.sh from the template repo'; rm -f ampmodpack.sh.new; [ -f ampmodpack.sh ]; }\"",
+        "SkipOnFailure": false
+    },
+    {
+        "UpdateStageName": "Install or update modpack",
+        "UpdateSourcePlatform": "Linux",
+        "UpdateSource": "Executable",
+        "UpdateSourceData": "/bin/bash",
+        "UpdateSourceArgs": "-c \"exec bash '{{$FullRootDir}}tools/ampmodpack.sh' update --source '{{CFModpack}}' --version '{{CFModpackVersion}}' --api-key '{{CFApiKey}}' --java '{{JavaRuntime}}' --java-path '{{JavaCustomPath}}' --protect '{{ConfigProtection}}' --backup '{{PreUpdateBackup}}' --backup-keep '{{PreUpdateBackupKeep}}' --exclude-file '{{CFExcludeIncludeFile}}' --exclude-mods '{{CFExcludeMods}}' --include-mods '{{CFIncludeMods}}' --loader-version '{{ModLoaderVersion}}' --force '{{RepairOnUpdate}}' --helper-version '{{HelperVersion}}'\"",
+        "SkipOnFailure": false
+    }
+]
