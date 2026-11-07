@@ -270,7 +270,7 @@
         "DisplayName": "Message of the Day (MOTD)",
         "Category": "Minecraft Server:stadia_controller",
         "Subcategory": "Server List:dns:1",
-        "Description": "The text shown under the server name in the multiplayer list. Colour codes like §6 or § work. Blank = leave server.properties as it is. Don't use double quotes.",
+        "Description": "Text under the server name in the multiplayer list. Design it visually with the [MOTD Workbench](https://claude.ai/artifact/NSTcMdVkFBP7CfSHSQd4x3) and paste the result here. Use § colour codes and \n for a second line. Blank = leave server.properties as it is.",
         "Keywords": "motd,server.properties,MCMotd",
         "FieldName": "MCMotd",
         "InputType": "text",
@@ -625,5 +625,443 @@
         "DefaultValue": "",
         "EnumValues": {},
         "Placeholder": "60000"
+    },
+    {
+        "DisplayName": "Server Icon URL",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Server List:dns:1",
+        "Description": "Link to a 64x64 PNG shown next to your server in the multiplayer list. Downloaded on the next start (only again when the link changes). Bigger images are resized if ImageMagick is available, otherwise rejected. Blank = keep the current icon.",
+        "Keywords": "server-icon,ServerIconURL",
+        "FieldName": "ServerIconURL",
+        "InputType": "text",
+        "ParamFieldName": "server-icon",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {},
+        "Placeholder": "https://example.com/icon-64.png"
+    },
+    {
+        "DisplayName": "Hide Online Players",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "More Properties:tune:5",
+        "Description": "Hide the list of online player names in the server list hover.",
+        "Keywords": "hide-online-players,MCHideOnlinePlayers",
+        "FieldName": "MCHideOnlinePlayers",
+        "InputType": "enum",
+        "ParamFieldName": "hide-online-players",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Require Signed Chat",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "More Properties:tune:5",
+        "Description": "Only let in players with Mojang-signed chat keys. Many modded servers turn this off.",
+        "Keywords": "enforce-secure-profile,MCEnforceSecureProfile",
+        "FieldName": "MCEnforceSecureProfile",
+        "InputType": "enum",
+        "ParamFieldName": "enforce-secure-profile",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Resource Pack URL",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "More Properties:tune:5",
+        "Description": "Direct download link to a server resource pack (.zip). Blank = leave as is.",
+        "Keywords": "resource-pack,MCResourcePack",
+        "FieldName": "MCResourcePack",
+        "InputType": "text",
+        "ParamFieldName": "resource-pack",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {}
+    },
+    {
+        "DisplayName": "Resource Pack SHA-1",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "More Properties:tune:5",
+        "Description": "SHA-1 hash of the resource pack, so clients only re-download it when it changes. Blank = leave as is.",
+        "Keywords": "resource-pack-sha1,MCResourcePackSha1",
+        "FieldName": "MCResourcePackSha1",
+        "InputType": "text",
+        "ParamFieldName": "resource-pack-sha1",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {}
+    },
+    {
+        "DisplayName": "Require Resource Pack",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "More Properties:tune:5",
+        "Description": "Kick players who decline the server resource pack.",
+        "Keywords": "require-resource-pack,MCRequireResourcePack",
+        "FieldName": "MCRequireResourcePack",
+        "InputType": "enum",
+        "ParamFieldName": "require-resource-pack",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Synchronous Chunk Writes",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "More Properties:tune:5",
+        "Description": "Off can improve performance on slow disks, with a small risk of chunk loss on a crash.",
+        "Keywords": "sync-chunk-writes,MCSyncChunkWrites",
+        "FieldName": "MCSyncChunkWrites",
+        "InputType": "enum",
+        "ParamFieldName": "sync-chunk-writes",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "World Border Radius",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "More Properties:tune:5",
+        "Description": "Maximum world radius in blocks (default 29999984). Blank = leave as is.",
+        "Keywords": "max-world-size,MCMaxWorldSize",
+        "FieldName": "MCMaxWorldSize",
+        "InputType": "text",
+        "ParamFieldName": "max-world-size",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {}
+    },
+    {
+        "DisplayName": "Entity Render Range",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "More Properties:tune:5",
+        "Description": "How far away players see entities, as a percentage (10-1000, default 100). Lower helps busy servers. Blank = leave as is.",
+        "Keywords": "entity-broadcast-range-percentage,MCEntityBroadcast",
+        "FieldName": "MCEntityBroadcast",
+        "InputType": "text",
+        "ParamFieldName": "entity-broadcast-range-percentage",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {}
+    },
+    {
+        "DisplayName": "Network Compression Threshold",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "More Properties:tune:5",
+        "Description": "Packet size in bytes above which packets are compressed (default 256, -1 = off). Blank = leave as is.",
+        "Keywords": "network-compression-threshold,MCNetworkCompression",
+        "FieldName": "MCNetworkCompression",
+        "InputType": "text",
+        "ParamFieldName": "network-compression-threshold",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {}
+    },
+    {
+        "DisplayName": "Extra server.properties",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "More Properties:tune:5",
+        "Description": "Any other server.properties keys, as key=value pairs separated by semicolons. Example: enable-status=true; rate-limit=0. These keys are written on every start.",
+        "Keywords": "extra,MCExtraProperties",
+        "FieldName": "MCExtraProperties",
+        "InputType": "text",
+        "ParamFieldName": "extra",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {},
+        "Placeholder": "key=value; key=value"
+    },
+    {
+        "DisplayName": "Keep Inventory",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Players keep their items and XP when they die. Leave as is = don't change the world's current setting.",
+        "Keywords": "keepInventory,GRKeepInventory",
+        "FieldName": "GRKeepInventory",
+        "InputType": "enum",
+        "ParamFieldName": "keepInventory",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Fire Spread",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Fire spreads and burns out naturally. Leave as is = don't change the world's current setting.",
+        "Keywords": "doFireTick,GRDoFireTick",
+        "FieldName": "GRDoFireTick",
+        "InputType": "enum",
+        "ParamFieldName": "doFireTick",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Mob Griefing",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Creepers, Endermen, Ghasts and similar mobs can change blocks. Leave as is = don't change the world's current setting.",
+        "Keywords": "mobGriefing,GRMobGriefing",
+        "FieldName": "GRMobGriefing",
+        "InputType": "enum",
+        "ParamFieldName": "mobGriefing",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Daylight Cycle",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Time of day advances. Off freezes the current time. Leave as is = don't change the world's current setting.",
+        "Keywords": "doDaylightCycle,GRDoDaylightCycle",
+        "FieldName": "GRDoDaylightCycle",
+        "InputType": "enum",
+        "ParamFieldName": "doDaylightCycle",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Weather Cycle",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Weather changes on its own. Leave as is = don't change the world's current setting.",
+        "Keywords": "doWeatherCycle,GRDoWeatherCycle",
+        "FieldName": "GRDoWeatherCycle",
+        "InputType": "enum",
+        "ParamFieldName": "doWeatherCycle",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Mob Spawning",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Mobs spawn naturally. Leave as is = don't change the world's current setting.",
+        "Keywords": "doMobSpawning,GRDoMobSpawning",
+        "FieldName": "GRDoMobSpawning",
+        "InputType": "enum",
+        "ParamFieldName": "doMobSpawning",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Phantoms",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Phantoms spawn when players haven't slept. Leave as is = don't change the world's current setting.",
+        "Keywords": "doInsomnia,GRDoInsomnia",
+        "FieldName": "GRDoInsomnia",
+        "InputType": "enum",
+        "ParamFieldName": "doInsomnia",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Instant Respawn",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Players respawn without the death screen. Leave as is = don't change the world's current setting.",
+        "Keywords": "doImmediateRespawn,GRDoImmediateRespawn",
+        "FieldName": "GRDoImmediateRespawn",
+        "InputType": "enum",
+        "ParamFieldName": "doImmediateRespawn",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Announce Advancements",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Advancements are announced in chat. Leave as is = don't change the world's current setting.",
+        "Keywords": "announceAdvancements,GRAnnounceAdvancements",
+        "FieldName": "GRAnnounceAdvancements",
+        "InputType": "enum",
+        "ParamFieldName": "announceAdvancements",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Death Messages",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Death messages appear in chat. Leave as is = don't change the world's current setting.",
+        "Keywords": "showDeathMessages,GRShowDeathMessages",
+        "FieldName": "GRShowDeathMessages",
+        "InputType": "enum",
+        "ParamFieldName": "showDeathMessages",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Natural Regeneration",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Players regenerate health from a full hunger bar. Leave as is = don't change the world's current setting.",
+        "Keywords": "naturalRegeneration,GRNaturalRegeneration",
+        "FieldName": "GRNaturalRegeneration",
+        "InputType": "enum",
+        "ParamFieldName": "naturalRegeneration",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Wandering Traders",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Wandering traders spawn. Leave as is = don't change the world's current setting.",
+        "Keywords": "doTraderSpawning,GRDoTraderSpawning",
+        "FieldName": "GRDoTraderSpawning",
+        "InputType": "enum",
+        "ParamFieldName": "doTraderSpawning",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Pillager Patrols",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Pillager patrols spawn. Leave as is = don't change the world's current setting.",
+        "Keywords": "doPatrolSpawning,GRDoPatrolSpawning",
+        "FieldName": "GRDoPatrolSpawning",
+        "InputType": "enum",
+        "ParamFieldName": "doPatrolSpawning",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {
+            "": "Leave as is",
+            "true": "On",
+            "false": "Off"
+        }
+    },
+    {
+        "DisplayName": "Players Needed To Skip Night",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Percentage of online players who must sleep to skip the night (Minecraft 1.17+). 0 = one player is enough. Blank = leave as is.",
+        "Keywords": "playersSleepingPercentage,GRPlayersSleepingPercentage",
+        "FieldName": "GRPlayersSleepingPercentage",
+        "InputType": "text",
+        "ParamFieldName": "playersSleepingPercentage",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {},
+        "Placeholder": "100"
+    },
+    {
+        "DisplayName": "Random Tick Speed",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "How fast crops and trees grow (default 3). Blank = leave as is.",
+        "Keywords": "randomTickSpeed,GRRandomTickSpeed",
+        "FieldName": "GRRandomTickSpeed",
+        "InputType": "text",
+        "ParamFieldName": "randomTickSpeed",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {},
+        "Placeholder": "3"
+    },
+    {
+        "DisplayName": "Spawn Radius",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Radius in blocks around world spawn where new players appear (default 10). Blank = leave as is.",
+        "Keywords": "spawnRadius,GRSpawnRadius",
+        "FieldName": "GRSpawnRadius",
+        "InputType": "text",
+        "ParamFieldName": "spawnRadius",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {},
+        "Placeholder": "10"
+    },
+    {
+        "DisplayName": "Other Game Rules",
+        "Category": "Minecraft Server:stadia_controller",
+        "Subcategory": "Game Rules:gavel:6",
+        "Description": "Any other game rules as name=value pairs separated by semicolons. Example: doFireTick=false; maxEntityCramming=12",
+        "Keywords": "extra,GRExtra",
+        "FieldName": "GRExtra",
+        "InputType": "text",
+        "ParamFieldName": "extra",
+        "IncludeInCommandLine": false,
+        "DefaultValue": "",
+        "EnumValues": {},
+        "Placeholder": "ruleName=value; ruleName=value"
     }
 ]

@@ -72,30 +72,53 @@ that was otherwise valid.
 5. Press **Start**. AMP shows *Running* once the server prints `Done (...)! For help, type "help"`.
    **Stop** sends `stop`, so the world is saved properly.
 
-## Minecraft server settings (server.properties)
+## Minecraft server settings
 
-The instance's **Configuration → Minecraft Server** page holds the usual `server.properties` options:
+The instance's **Configuration → Minecraft Server** page is the one place to configure the server itself:
 
-- **Server List**: MOTD, max players, whitelist, online mode
-- **Gameplay**: game mode, difficulty, hardcore, PvP, allow flight, spawn protection, op level, command blocks, idle kick
-- **World**: world folder name, seed, world type, structures, Nether
-- **Performance**: view distance, simulation distance, watchdog timeout
+| Section | What's there |
+|---|---|
+| Server List | MOTD, server icon, max players, whitelist, online mode |
+| Gameplay | game mode, difficulty, hardcore, PvP, allow flight, spawn protection, op level, command blocks, idle kick |
+| World | world folder name, seed, world type, structures, Nether |
+| Performance | view distance, simulation distance, watchdog timeout |
+| More Properties | hide player list, signed chat, resource pack, chunk writes, world border, entity range, compression, plus **Extra server.properties** for any other key |
+| Game Rules | keep inventory, fire spread, mob griefing, daylight/weather cycle, mob spawning, phantoms, instant respawn, announcements, death messages, regeneration, traders, patrols, sleeping percentage, random tick speed, spawn radius, plus **Other Game Rules** for any other rule |
 
-Changes apply the next time the server starts. How they're written:
+Everything applies the next time the server starts.
 
-- On every start, the template writes **only the keys on that page** into `server/server.properties`.
-  Every other line in the file is left alone. So you can still edit anything else by hand in the
-  File Manager, and pack-specific lines (for example a skyblock pack's `level-type`) survive.
-- A **blank** text field (MOTD, world name, seed, world type, watchdog) means "don't touch this key".
-  Leave **World Type** blank for modpacks; they often set their own.
-- Keys on that page always win. If you edit one of them by hand in `server.properties`, the AMP
-  setting overwrites it on the next start. Change it in AMP instead.
-- `server-port` comes from AMP's port setting and is always written.
+### How server.properties is written
+
+- On every start, only the keys you set in AMP are written into `server/server.properties`. Every other line
+  stays, including your own edits and pack-specific lines (for example a skyblock pack's `level-type`).
+- **Blank** text fields and **Leave as is** switches don't touch the file. Leave **World Type** blank for modpacks.
+- Keys you set in AMP win. If you edit one of them by hand, AMP overwrites it on the next start.
+- `server-port` always comes from AMP's port setting.
 - **Allow Flight** defaults to on, because modded flight (jetpacks, rings, wings) otherwise gets players kicked.
-- Don't put double quotes (`"`) in the MOTD. For colours, use `§` or `§` followed by a colour code, e.g. `§6Gold`.
 
-Game rules like `keepInventory` aren't in `server.properties`; they're stored in the world. Set them
-once in the console, e.g. `gamerule keepInventory true`.
+### Colourful MOTD
+
+Use the **[MOTD Workbench](https://claude.ai/artifact/NSTcMdVkFBP7CfSHSQd4x3)** (the same page is
+`motd-editor.html` in this repo). It has colour and effect buttons, a rainbow tool, centring, a
+width meter and a live preview drawn like the multiplayer list. Copy its output into **Message of
+the Day**. The output uses `§` colour codes and `
+` for the second line, which is the safe
+form for both AMP and Java. Only the 16 classic colours and 5 effects work in `server.properties`.
+
+### Server icon
+
+Paste a link to a **64x64 PNG** into **Server Icon URL**. It's downloaded on the next start and only
+again when you change the link. Bigger images are resized only if ImageMagick exists on the
+server; otherwise they're rejected with a message in the console. Blank keeps the current icon.
+
+### Game rules
+
+Game rules live in the world, not in `server.properties`. The template writes them into a tiny
+datapack, `world/datapacks/amp-settings`, whose load function runs `gamerule …` on every start. So the
+AMP values win, and **Leave as is** keeps whatever the world has. Each rule runs on its own,
+so a rule your Minecraft version doesn't know only skips itself. This works on Minecraft
+1.16.2 to 1.21.10. On other versions, set rules in the console, e.g. `gamerule keepInventory true`.
+Clearing every game rule setting removes the datapack again.
 
 ## 4. Update a pack
 

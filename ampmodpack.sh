@@ -18,7 +18,7 @@
 set -Eeuo pipefail
 umask 022
 
-SCRIPT_VERSION="1.1.0"
+SCRIPT_VERSION="1.2.0"
 DEFAULT_HELPER_VERSION="1.76.0"
 DEFAULT_EXCLUDE_FILE="https://raw.githubusercontent.com/itzg/docker-minecraft-server/master/files/cf-exclude-include.json"
 
@@ -574,10 +574,119 @@ cmd_update() {
 }
 
 # ---------------------------------------------------------------------------------------------
+# Server icon (server-icon.png must be a 64x64 PNG)
+# ---------------------------------------------------------------------------------------------
+png_size() { # png_size FILE -> "WxH" or "" if not a PNG
+  local sig dims
+  sig="$(od -An -tx1 -N8 "$1" 2>/dev/null | tr -d ' \n')"
+  [[ "$sig" == "89504e470d0a1a0a" ]] || return 0
+  dims="$(od -An -tu1 -j16 -N8 "$1" | tr -s ' ' | sed 's/^ //')"
+  set -- $dims
+  printf '%sx%s' "$(( ($1<<24) + ($2<<16) + ($3<<8) + $4 ))" "$(( ($5<<24) + ($6<<16) + ($7<<8) + $8 ))"
+}
+
+apply_server_icon() { # apply_server_icon URL   (blank = leave server-icon.png alone)
+  local url="$1" stamp="$STATE_DIR/server-icon.url" tmp size
+  [[ -n "$url" ]] || return 0
+  if [[ -f "$SERVER_DIR/server-icon.png" && "$(cat "$stamp" 2>/dev/null)" == "$url" ]]; then return 0; fi
+  [[ "$url" =~ ^https?:// ]] || { warn "Server icon must be an http(s) URL to a PNG; ignoring '$url'"; return 0; }
+  tmp="$(mktemp "$STATE_DIR/.icon-XXXXXX")"
+  if ! fetch "$url" "$tmp"; then rm -f "$tmp"; warn "Could not download the server icon from $url; keeping the current one"; return 0; fi
+  size="$(png_size "$tmp")"
+  if [[ -z "$size" ]]; then rm -f "$tmp"; warn "The server icon URL is not a PNG image; keeping the current one"; return 0; fi
+  if [[ "$size" != "64x64" ]]; then
+    if command -v convert >/dev/null 2>&1 && convert -version 2>/dev/null | grep -q ImageMagick \
+       && convert "$tmp" -resize '64x64!' "PNG32:$tmp.64" 2>/dev/null; then
+      mv -f "$tmp.64" "$tmp"; log "Resized the server icon from $size to 64x64"
+    else
+      rm -f "$tmp" "$tmp.64"; warn "The server icon is $size but Minecraft needs exactly 64x64 pixels; keeping the current one"; return 0
+    fi
+  fi
+  mv -f "$tmp" "$SERVER_DIR/server-icon.png"
+  printf '%s' "$url" > "$stamp"
+  log "Server icon updated from $url"
+}
+
+# ---------------------------------------------------------------------------------------------
+# Game rules: written as a tiny datapack whose load function sets them every time the server
+# starts (and on /reload). One function per rule, referenced as optional tag entries, so a rule
+# a Minecraft version doesn't know only skips itself instead of breaking the others.
+# ---------------------------------------------------------------------------------------------
+ver_ge() { [[ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -n1)" == "$2" ]]; }   # ver_ge A B: A >= B
+
+datapack_format() { # datapack_format MC_VERSION -> pack_format number
+  local v="$1"
+  if   ver_ge "$v" 1.21.9;  then echo 88
+  elif ver_ge "$v" 1.21.7;  then echo 81
+  elif ver_ge "$v" 1.21.6;  then echo 80
+  elif ver_ge "$v" 1.21.5;  then echo 71
+  elif ver_ge "$v" 1.21.4;  then echo 61
+  elif ver_ge "$v" 1.21.2;  then echo 57
+  elif ver_ge "$v" 1.21;    then echo 48
+  elif ver_ge "$v" 1.20.5;  then echo 41
+  elif ver_ge "$v" 1.20.3;  then echo 26
+  elif ver_ge "$v" 1.20.2;  then echo 18
+  elif ver_ge "$v" 1.20;    then echo 15
+  elif ver_ge "$v" 1.19.4;  then echo 12
+  elif ver_ge "$v" 1.19;    then echo 10
+  elif ver_ge "$v" 1.18.2;  then echo 9
+  elif ver_ge "$v" 1.18;    then echo 8
+  elif ver_ge "$v" 1.17;    then echo 7
+  else echo 6
+  fi
+}
+
+apply_gamerules() { # apply_gamerules MC_VERSION rule=value...
+  local mc="$1"; shift
+  local level dp r name val fmt fn_dir tag_dir entries=() applied=()
+  level="$(level_name)"
+  dp="$SERVER_DIR/$level/datapacks/amp-settings"
+
+  for r in "$@"; do
+    [[ "$r" == *=* ]] || continue
+    name="$(trim "${r%%=*}")"; val="$(trim "${r#*=}")"
+    [[ -n "$val" ]] || continue
+    [[ "$name" =~ ^[A-Za-z][A-Za-z0-9_]*$ && "$val" =~ ^(true|false|-?[0-9]+)$ ]] \
+      || { warn "Ignoring invalid game rule '$r' (use name=true, name=false or name=number)"; continue; }
+    applied+=("$name=$val")
+  done
+
+  if (( ${#applied[@]} == 0 )); then
+    [[ -d "$dp" ]] && { rm -rf "$dp"; log "No game rules set in AMP; removed the amp-settings datapack (the world keeps its current rules)"; }
+    return 0
+  fi
+  if ! ver_ge "$mc" 1.16.2 || ver_ge "$mc" 1.21.11 || [[ "$mc" == 2[0-9].* ]]; then
+    warn "Game rule settings support Minecraft 1.16.2 to 1.21.10; this pack is $mc. Set rules in the console instead, e.g. gamerule keepInventory true"
+    return 0
+  fi
+
+  fmt="$(datapack_format "$mc")"
+  if ver_ge "$mc" 1.21; then fn_dir="function"; tag_dir="function"; else fn_dir="functions"; tag_dir="functions"; fi
+  rm -rf "$dp"
+  mkdir -p "$dp/data/amp_settings/$fn_dir" "$dp/data/minecraft/tags/$tag_dir"
+  {
+    printf '{\n  "pack": {\n    "description": "Game rules from the AMP instance settings (regenerated on every start)",\n    "pack_format": %s' "$fmt"
+    (( fmt >= 18 )) && printf ',\n    "supported_formats": [%s, %s]' "$fmt" "$fmt"
+    (( fmt >= 82 )) && printf ',\n    "min_format": %s,\n    "max_format": %s' "$fmt" "$fmt"
+    printf '\n  }\n}\n'
+  } > "$dp/pack.mcmeta"
+  for r in "${applied[@]}"; do
+    name="${r%%=*}"; val="${r#*=}"
+    local fid; fid="$(tr 'A-Z' 'a-z' <<<"$name" | tr -c 'a-z0-9_\n' '_')"
+    printf 'gamerule %s %s\n' "$name" "$val" > "$dp/data/amp_settings/$fn_dir/$fid.mcfunction"
+    entries+=("    {\"id\": \"amp_settings:$fid\", \"required\": false}")
+  done
+  { printf '{\n  "replace": false,\n  "values": [\n'; (IFS=$'\n'; printf '%s' "${entries[*]}" | sed '$!s/$/,/'); printf '\n  ]\n}\n'; } \
+    > "$dp/data/minecraft/tags/$tag_dir/load.json"
+  log "Game rules (applied by the amp-settings datapack on start): ${applied[*]}"
+}
+
+# ---------------------------------------------------------------------------------------------
 # start
 # ---------------------------------------------------------------------------------------------
 cmd_start() {
-  local java_choice="auto" java_path="" ram="" port="" eula="false" props=()
+  local java_choice="auto" java_path="" ram="" port="" eula="false" props=() rules=() icon_url=""
+  local x
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --java) java_choice="$(clean "${2-}")"; shift 2 ;;
@@ -586,6 +695,16 @@ cmd_start() {
       --port) port="$(clean "${2-}")"; shift 2 ;;
       --eula) eula="$(clean "${2-}")"; shift 2 ;;
       --prop) props+=("$(clean "${2-}")"); shift 2 ;;
+      --prop-extra) # "key=value; key=value"
+        IFS=';' read -ra _extra <<<"$(clean "${2-}")"
+        for x in "${_extra[@]}"; do x="$(trim "$x")"; [[ -n "$x" ]] && props+=("$x"); done
+        shift 2 ;;
+      --rule) rules+=("$(clean "${2-}")"); shift 2 ;;
+      --rule-extra)
+        IFS=';' read -ra _extra <<<"$(clean "${2-}")"
+        for x in "${_extra[@]}"; do x="$(trim "$x")"; [[ -n "$x" ]] && rules+=("$x"); done
+        shift 2 ;;
+      --icon) icon_url="$(trim "$(clean "${2-}")")"; shift 2 ;;
       --) shift; break ;;
       *) die "Unknown start option: $1" ;;
     esac
@@ -616,6 +735,9 @@ cmd_start() {
     set_property "$SERVER_DIR/server.properties" "$key" "$val" || changed+=("$key=$val")
   done
   (( ${#changed[@]} == 0 )) || log "server.properties updated from AMP settings: ${changed[*]}"
+
+  apply_server_icon "$icon_url"
+  apply_gamerules "$MC_VERSION" "${rules[@]}"
 
   [[ "$ram" =~ ^[0-9]+$ ]] || die "Invalid RAM setting: '$ram' (megabytes)"
   local xms=$(( ram < 2048 ? ram : 2048 ))

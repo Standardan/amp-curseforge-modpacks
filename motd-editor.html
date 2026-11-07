@@ -1,0 +1,400 @@
+<title>MOTD Workbench</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&family=Chivo:wght@400;600;700&family=Chivo+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a workbench — the in-game server list preview on top (the thing you're making),
+   the code editor and tools below, the copy-ready output last. */
+:root {
+  --bg: #f2f1ec;
+  --surface: #ffffff;
+  --ink: #23261f;
+  --muted: #64695c;
+  --line: #d9d8cf;
+  --accent: #3c8527;        /* grass-block green */
+  --accent-ink: #ffffff;
+  --code-bg: #eeede6;
+  --display: "Pixelify Sans", "Courier New", monospace;
+  --body: "Chivo", "Segoe UI", system-ui, sans-serif;
+  --mono: "Chivo Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  /* the game screen is always dark, in both themes */
+  --mc-panel: #1e1e1e;
+  --mc-dirt-1: #3b2f22;
+  --mc-dirt-2: #2e251b;
+  --mc-white: #ffffff;
+  --mc-gray: #aaaaaa;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171a15; --surface: #20241d; --ink: #e8eadf; --muted: #a2a897; --line: #343a2f;
+    --accent: #6cc04a; --accent-ink: #0f140c; --code-bg: #262b22; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #171a15; --surface: #20241d; --ink: #e8eadf; --muted: #a2a897; --line: #343a2f;
+  --accent: #6cc04a; --accent-ink: #0f140c; --code-bg: #262b22; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.wrap { max-width: 880px; margin: 0 auto; display: grid; gap: 22px; }
+header h1 { font: 700 30px/1.1 var(--display); margin: 0; letter-spacing: .5px; text-wrap: balance; }
+header p { margin: 6px 0 0; color: var(--muted); max-width: 62ch; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.label { font: 600 12px/1 var(--body); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* --- in-game preview --- */
+.screen {
+  border-radius: 8px; padding: 18px 14px; overflow-x: auto;
+  background:
+    repeating-conic-gradient(var(--mc-dirt-1) 0% 25%, var(--mc-dirt-2) 0% 50%) 0 0 / 16px 16px;
+}
+.entry {
+  width: 610px; max-width: none; margin: 0 auto; display: grid; grid-template-columns: 64px 1fr auto; gap: 8px;
+  background: rgba(0,0,0,.55); outline: 2px solid #8b8b8b; padding: 4px; image-rendering: pixelated;
+}
+.icon { width: 64px; height: 64px; background: #5d8a3a; display: grid; place-items: center; overflow: hidden; }
+.icon img { width: 64px; height: 64px; image-rendering: pixelated; }
+.icon .ph { width: 40px; height: 40px; background: linear-gradient(#7fbf3f 0 30%, #866043 30% 100%); box-shadow: inset 0 0 0 2px rgba(0,0,0,.25); }
+.mc { font: 400 18px/20px var(--display); color: var(--mc-white); white-space: pre; text-shadow: 2px 2px 0 #3f3f3f; }
+.mc-name { margin-bottom: 2px; }
+.mc-motd { color: var(--mc-gray); min-height: 40px; }
+.mc-side { text-align: right; display: grid; align-content: start; gap: 4px; }
+.bars { display: inline-flex; gap: 1px; align-items: flex-end; height: 14px; }
+.bars i { width: 3px; background: #00e000; box-shadow: 1px 1px 0 #003f00; }
+.mc b, .mc .bold { font-weight: 700; }
+.mc .it { font-style: italic; }
+.mc .un { text-decoration: underline; }
+.mc .st { text-decoration: line-through; }
+.mc .un.st { text-decoration: underline line-through; }
+.hint { color: var(--muted); font-size: 13px; }
+
+/* --- editor --- */
+.lines { display: grid; gap: 10px; }
+.line { display: grid; gap: 4px; }
+.line-head { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); }
+.meter { font-variant-numeric: tabular-nums; }
+.meter.over { color: #c0392b; font-weight: 600; }
+textarea, input[type=text] {
+  width: 100%; font: 15px/1.45 var(--mono); color: var(--ink); background: var(--code-bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; resize: vertical;
+}
+textarea:focus-visible, input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.swatches { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 4px; }
+.sw { aspect-ratio: 1; border-radius: 4px; border: 1px solid rgba(0,0,0,.35); cursor: pointer; padding: 0; position: relative; }
+.sw span { position: absolute; inset: auto 0 1px; font: 600 10px/1 var(--mono); color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000; }
+button.tool {
+  font: 600 13px/1 var(--body); padding: 8px 11px; border-radius: 6px; cursor: pointer;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+}
+button.tool:hover { border-color: var(--accent); }
+button.tool .k { font-family: var(--mono); color: var(--muted); margin-left: 4px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.fmt-l { font-weight: 700; } .fmt-o { font-style: italic; } .fmt-n { text-decoration: underline; } .fmt-m { text-decoration: line-through; }
+
+/* --- output --- */
+.out { display: grid; gap: 6px; min-width: 0; }
+.out code {
+  display: block; font: 13px/1.5 var(--mono); background: var(--code-bg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 10px; overflow-x: auto; white-space: pre; user-select: all;
+}
+.toast { font-size: 13px; color: var(--accent); min-height: 1.2em; }
+details { color: var(--muted); font-size: 14px; }
+details summary { cursor: pointer; color: var(--ink); font-weight: 600; }
+.legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 14px; margin-top: 8px; font-family: var(--mono); font-size: 13px; }
+@media (max-width: 560px) { .swatches { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+@media (prefers-reduced-motion: reduce) { .mc .obf { animation: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>MOTD Workbench</h1>
+    <p>Design the two lines players see under your server's name in the multiplayer list. Type with <code>&amp;</code> codes or use the buttons, then copy the result into the <strong>Message of the Day</strong> setting in AMP.</p>
+  </header>
+
+  <section class="panel" aria-label="Preview">
+    <div class="row" style="justify-content:space-between">
+      <span class="label">Multiplayer list preview</span>
+      <span class="hint">Scroll sideways on a phone</span>
+    </div>
+    <div class="screen">
+      <div class="entry">
+        <div class="icon" id="icon"><div class="ph" aria-hidden="true"></div></div>
+        <div>
+          <div class="mc mc-name" id="pv-name">Minecraft Server</div>
+          <div class="mc mc-motd" id="pv-motd"></div>
+        </div>
+        <div class="mc-side">
+          <span class="mc" style="color:var(--mc-gray)"><span id="pv-players">3</span><span style="color:#555">/</span>20 <span class="bars" aria-hidden="true"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:11px"></i><i style="height:14px"></i></span></span>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <label class="hint" for="srvname">Server name in the list (only for this preview):</label>
+      <input type="text" id="srvname" value="ATM10 with friends" style="max-width:260px">
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Editor">
+    <span class="label">Edit</span>
+    <div class="lines">
+      <div class="line">
+        <div class="line-head"><label for="l1">Line 1</label><span class="meter" id="m1"></span></div>
+        <textarea id="l1" rows="1" spellcheck="false"></textarea>
+      </div>
+      <div class="line">
+        <div class="line-head"><label for="l2">Line 2</label><span class="meter" id="m2"></span></div>
+        <textarea id="l2" rows="1" spellcheck="false"></textarea>
+      </div>
+    </div>
+
+    <div class="label" style="margin-top:4px">Colours <span style="text-transform:none;letter-spacing:0;font-weight:400">— click to insert at the cursor. A colour also clears bold/italic, so pick the colour first.</span></div>
+    <div class="swatches" id="swatches"></div>
+
+    <div class="label">Effects</div>
+    <div class="row" id="formats"></div>
+
+    <div class="label">Tools</div>
+    <div class="row">
+      <button class="tool" id="rainbow" type="button">Rainbow selection</button>
+      <button class="tool" id="center" type="button">Center this line</button>
+      <button class="tool" id="strip" type="button">Remove codes from selection</button>
+      <button class="tool" id="sample" type="button">Load example</button>
+      <button class="tool" id="clear" type="button">Clear</button>
+    </div>
+    <p class="hint" style="margin:0">The width meter estimates pixels in the server list. Above 270 the line gets cut off in-game.</p>
+  </section>
+
+  <section class="panel" aria-label="Output">
+    <span class="label">Copy into AMP</span>
+    <div class="out">
+      <div class="row" style="justify-content:space-between"><span>For the <strong>Message of the Day</strong> field in AMP</span><button class="tool primary" id="copy-amp" type="button">Copy</button></div>
+      <code id="out-amp"></code>
+    </div>
+    <div class="out">
+      <div class="row" style="justify-content:space-between"><span>Or as a <code>server.properties</code> line</span><button class="tool" id="copy-prop" type="button">Copy</button></div>
+      <code id="out-prop"></code>
+    </div>
+    <div class="toast" id="toast" role="status"></div>
+    <div class="out">
+      <label for="import">Already have a MOTD? Paste it here to load it (accepts <code>§</code>, <code>§</code> or <code>&amp;</code> codes, and <code>\n</code> between lines).</label>
+      <input type="text" id="import" placeholder="§6Gold text\n§7second line">
+    </div>
+    <details>
+      <summary>Code reference</summary>
+      <div class="legend" id="legend"></div>
+      <p>Server MOTDs only support these 16 colours and 5 effects. Hex colours need a server plugin and won't work from <code>server.properties</code>. Use <code>&amp;r</code> to reset back to plain text.</p>
+    </details>
+  </section>
+</div>
+
+<script>
+(() => {
+  const COLORS = [
+    ["0","Black","#000000"],["1","Dark Blue","#0000AA"],["2","Dark Green","#00AA00"],["3","Dark Aqua","#00AAAA"],
+    ["4","Dark Red","#AA0000"],["5","Dark Purple","#AA00AA"],["6","Gold","#FFAA00"],["7","Gray","#AAAAAA"],
+    ["8","Dark Gray","#555555"],["9","Blue","#5555FF"],["a","Green","#55FF55"],["b","Aqua","#55FFFF"],
+    ["c","Red","#FF5555"],["d","Light Purple","#FF55FF"],["e","Yellow","#FFFF55"],["f","White","#FFFFFF"]
+  ];
+  const FORMATS = [["l","Bold"],["o","Italic"],["n","Underline"],["m","Strikethrough"],["k","Scrambled"],["r","Reset"]];
+  const COLOR_MAP = Object.fromEntries(COLORS.map(c => [c[0], c[2]]));
+  const CODE_RE = /&([0-9a-fk-or])/gi;
+  const DEFAULT_COLOR = "#AAAAAA";       // the server list draws MOTDs in gray by default
+  const MAX_WIDTH = 270;                  // pixels the server list shows per line
+
+  const $ = id => document.getElementById(id);
+  const l1 = $("l1"), l2 = $("l2");
+  let active = l1;
+
+  // ---- Minecraft font metrics (advance width in pixels at GUI scale 1, including the 1px gap)
+  const NARROW = { " ":4, "!":2, "\"":4, "'":2, "(":4, ")":4, "*":4, ",":2, ".":2, ":":2, ";":2,
+    "<":5, ">":5, "@":7, "I":4, "[":4, "]":4, "`":3, "f":5, "i":2, "k":5, "l":3, "t":4, "{":4, "}":4, "|":2, "~":7 };
+  const charWidth = (ch, bold) => (NARROW[ch] ?? 6) + (bold && ch !== " " ? 1 : 0);
+
+  // ---- parse "&"-coded text into styled segments
+  function parse(text) {
+    const segs = []; let st = { color: null, l:false, o:false, n:false, m:false, k:false };
+    let buf = "", i = 0;
+    const push = () => { if (buf) { segs.push({ text: buf, ...st }); buf = ""; } };
+    while (i < text.length) {
+      const ch = text[i], nx = (text[i+1] || "").toLowerCase();
+      if (ch === "&" && /[0-9a-fk-or]/.test(nx)) {
+        push();
+        if (COLOR_MAP[nx]) st = { color: COLOR_MAP[nx], l:false, o:false, n:false, m:false, k:false };
+        else if (nx === "r") st = { color: null, l:false, o:false, n:false, m:false, k:false };
+        else st = { ...st, [nx]: true };
+        i += 2; continue;
+      }
+      buf += ch; i++;
+    }
+    push();
+    return segs;
+  }
+  const lineWidth = text => parse(text).reduce((w, s) => w + [...s.text].reduce((a, c) => a + charWidth(c, s.l), 0), 0);
+
+  // ---- render into the fake server list
+  const SCRAMBLE = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ0123456789#$%&?";
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function render(el, lines) {
+    el.textContent = "";
+    lines.forEach((text, idx) => {
+      if (idx) el.appendChild(document.createElement("br"));
+      for (const s of parse(text)) {
+        const span = document.createElement("span");
+        span.textContent = s.text;
+        if (s.color) { span.style.color = s.color; span.style.textShadow = `2px 2px 0 ${shade(s.color)}`; }
+        const cls = [s.l && "bold", s.o && "it", s.n && "un", s.m && "st", s.k && "obf"].filter(Boolean);
+        if (cls.length) span.className = cls.join(" ");
+        if (s.k) span.dataset.orig = s.text;
+        el.appendChild(span);
+      }
+    });
+  }
+  function shade(hex) { // Minecraft's text shadow is the colour at 1/4 brightness
+    const n = parseInt(hex.slice(1), 16);
+    const r = (n >> 16 & 255) >> 2, g = (n >> 8 & 255) >> 2, b = (n & 255) >> 2;
+    return `rgb(${r},${g},${b})`;
+  }
+  setInterval(() => {
+    if (reduceMotion) return;
+    document.querySelectorAll(".mc .obf").forEach(sp => {
+      sp.textContent = [...sp.dataset.orig].map(c => c === " " ? " " : SCRAMBLE[Math.random() * SCRAMBLE.length | 0]).join("");
+    });
+  }, 60);
+
+  // ---- output encoding
+  // AMP passes the value on a command line, and Java reads server.properties with \uXXXX escapes,
+  // so everything outside plain ASCII (and " and \) becomes a \u escape. Safe on every Minecraft version.
+  function encode(lines) {
+    const joined = lines.map(t => t.replace(CODE_RE, (_, c) => "§" + c.toLowerCase())).join("\n");
+    let out = "";
+    for (const ch of joined) {
+      const cp = ch.codePointAt(0);
+      if (ch === "\n") out += "\\n";
+      else if (ch === "\\") out += "\\\\";
+      else if (ch === "\"") out += "\\u0022";
+      else if (cp < 0x20 || cp > 0x7e) {
+        for (const unit of ch.split("")) out += "\\u" + unit.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
+      } else out += ch;
+    }
+    return out;
+  }
+  function decode(s) {
+    s = s.trim().replace(/^motd=/, "");
+    s = s.replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+         .replace(/\\n/g, "\n").replace(/\\\\/g, "\\");
+    s = s.replace(/§([0-9a-fk-or])/gi, (_, c) => "&" + c.toLowerCase());
+    const parts = s.split("\n");
+    return [parts[0] || "", parts.slice(1).join(" ")];
+  }
+
+  // ---- update everything
+  function update() {
+    const lines = [l1.value, l2.value].map(v => v.replace(/\n/g, ""));
+    render($("pv-motd"), lines);
+    $("pv-name").textContent = $("srvname").value || "Minecraft Server";
+    [[l1, "m1"], [l2, "m2"]].forEach(([el, id]) => {
+      const w = lineWidth(el.value);
+      const m = $(id);
+      m.textContent = `${w} / ${MAX_WIDTH} px`;
+      m.classList.toggle("over", w > MAX_WIDTH);
+    });
+    const enc = lines[1] ? encode(lines) : encode([lines[0]]);
+    $("out-amp").textContent = enc;
+    $("out-prop").textContent = "motd=" + enc;
+    try { localStorage.setItem("motd-workbench", JSON.stringify({ l1: l1.value, l2: l2.value, name: $("srvname").value })); } catch (e) {}
+  }
+
+  // ---- editing helpers
+  function insert(code) {
+    const el = active, s = el.selectionStart, e = el.selectionEnd;
+    el.setRangeText(code, s, s, "end");
+    if (e > s) el.setSelectionRange(s + code.length, e + code.length);
+    el.focus(); update();
+  }
+  const stripCodes = t => t.replace(CODE_RE, "");
+  function rainbow() {
+    const el = active, s = el.selectionStart, e = el.selectionEnd;
+    const sel = stripCodes(el.value.slice(s, e) || "");
+    if (!sel) { toast("Select some text first, then press Rainbow."); return; }
+    const cycle = ["c","6","e","a","b","9","d"]; let i = 0;
+    const fancy = [...sel].map(ch => ch === " " ? ch : "&" + cycle[i++ % cycle.length] + ch).join("") + "&r";
+    el.setRangeText(fancy, s, e, "select"); el.focus(); update();
+  }
+  function center() {
+    const el = active;
+    const plain = el.value.replace(/^ +/, "");
+    const w = lineWidth(plain);
+    const pad = Math.max(0, Math.floor((MAX_WIDTH - w) / 2 / 4));
+    el.value = " ".repeat(pad) + plain; el.focus(); update();
+  }
+  function strip() {
+    const el = active, s = el.selectionStart, e = el.selectionEnd;
+    if (e === s) { el.value = stripCodes(el.value); }
+    else el.setRangeText(stripCodes(el.value.slice(s, e)), s, e, "select");
+    el.focus(); update();
+  }
+  let toastTimer;
+  function toast(msg) { $("toast").textContent = msg; clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").textContent = "", 2600); }
+  async function copy(id) {
+    const text = $(id).textContent;
+    try { await navigator.clipboard.writeText(text); toast("Copied. Paste it into AMP, save, then restart the server."); }
+    catch (e) {
+      const r = document.createRange(); r.selectNodeContents($(id));
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      toast("Selected. Press Ctrl+C (or Cmd+C) to copy.");
+    }
+  }
+
+  // ---- build the toolbar
+  COLORS.forEach(([c, name, hex]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "sw"; b.style.background = hex; b.title = `${name} (&${c})`;
+    b.setAttribute("aria-label", `${name}, code &${c}`);
+    b.innerHTML = `<span>&amp;${c}</span>`;
+    b.addEventListener("mousedown", ev => ev.preventDefault());
+    b.addEventListener("click", () => insert("&" + c));
+    $("swatches").appendChild(b);
+  });
+  FORMATS.forEach(([c, name]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "tool fmt-" + c;
+    b.innerHTML = `${name}<span class="k">&amp;${c}</span>`;
+    b.addEventListener("mousedown", ev => ev.preventDefault());
+    b.addEventListener("click", () => insert("&" + c));
+    $("formats").appendChild(b);
+  });
+  $("legend").innerHTML = COLORS.map(([c, n, h]) => `<span><span style="display:inline-block;width:10px;height:10px;background:${h};border:1px solid var(--line)"></span> &amp;${c} ${n}</span>`).join("")
+    + FORMATS.map(([c, n]) => `<span>&amp;${c} ${n}</span>`).join("");
+
+  [l1, l2].forEach(el => {
+    el.addEventListener("focus", () => active = el);
+    el.addEventListener("input", update);
+    el.addEventListener("keydown", ev => { if (ev.key === "Enter") { ev.preventDefault(); if (el === l1) l2.focus(); } });
+  });
+  ["rainbow","center","strip"].forEach(id => $(id).addEventListener("mousedown", ev => ev.preventDefault()));
+  $("rainbow").addEventListener("click", rainbow);
+  $("center").addEventListener("click", center);
+  $("strip").addEventListener("click", strip);
+  $("srvname").addEventListener("input", update);
+  $("copy-amp").addEventListener("click", () => copy("out-amp"));
+  $("copy-prop").addEventListener("click", () => copy("out-prop"));
+  $("import").addEventListener("input", ev => {
+    if (!ev.target.value.trim()) return;
+    const [a, b] = decode(ev.target.value); l1.value = a; l2.value = b; update();
+  });
+  const SAMPLE = ["          &6&lAll the Mods 10 &7- &a&lSurvival", "     &bModded fun with friends &7| &eNow on 8.5 &c&k!!"];
+  $("sample").addEventListener("click", () => { l1.value = SAMPLE[0]; l2.value = SAMPLE[1]; update(); });
+  $("clear").addEventListener("click", () => { l1.value = ""; l2.value = ""; l1.focus(); update(); });
+
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem("motd-workbench") || "null"); } catch (e) {}
+  if (saved && (saved.l1 || saved.l2)) { l1.value = saved.l1 || ""; l2.value = saved.l2 || ""; if (saved.name) $("srvname").value = saved.name; }
+  else { l1.value = SAMPLE[0]; l2.value = SAMPLE[1]; }
+  update();
+})();
+</script>
