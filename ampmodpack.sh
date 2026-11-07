@@ -18,7 +18,7 @@
 set -Eeuo pipefail
 umask 022
 
-SCRIPT_VERSION="1.0.3"
+SCRIPT_VERSION="1.0.4"
 DEFAULT_HELPER_VERSION="1.76.0"
 DEFAULT_EXCLUDE_FILE="https://raw.githubusercontent.com/itzg/docker-minecraft-server/master/files/cf-exclude-include.json"
 
@@ -486,7 +486,10 @@ cmd_update() {
     # The Forge/NeoForge installer is launched as plain "java" from PATH: use the server's Java
     PATH="$(dirname "$server_java"):$PATH"; export PATH
     if [[ -n "$api_key" ]]; then export CF_API_KEY="$api_key"; else unset CF_API_KEY; fi
-    exec "$helper/bin/mc-image-helper" "${args[@]}" 3>&-
+    # Strip ANSI colour codes: AMP shows them as junk like "[0;39m" in the update console
+    set +e
+    "$helper/bin/mc-image-helper" "${args[@]}" 3>&- 2>&1 | sed -u 's/\x1b\[[0-9;]*[A-Za-z]//g'
+    exit "${PIPESTATUS[0]}"
   ) || rc=$?
 
   if (( rc != 0 )); then
