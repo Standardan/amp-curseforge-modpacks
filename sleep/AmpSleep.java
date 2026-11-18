@@ -15,6 +15,14 @@
  * exits cleanly, so AMP's Stop/Restart/Update behave normally. !wake, !sleep and !status are
  * handled here.
  *
+ * Live backups: AMP sends "save-off" before a backup and "save-on" after it (the template's
+ * QuiesceCommand/DequiesceCommand). save-off is passed on followed by "save-all flush", and until
+ * save-on the server is neither put to sleep nor woken, so nothing writes the world mid-backup.
+ *
+ * Metrics: AMP measures this supervisor, not the server, so every few seconds the server's own CPU
+ * and RAM are printed as a "Server metrics:" line, which the template's MetricsRegex turns into
+ * dashboard values (and HideFromConsoleRegex keeps out of the console).
+ *
  * Java 8 compatible, no dependencies. Build: javac --release 8 AmpSleep.java && jar cfe ...
  */
 
@@ -30,7 +38,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.regex.*;
 
 public final class AmpSleep {
-    static final String VERSION = "1.0.0";
+    static final String VERSION = "1.1.0";
     static final Charset LATIN1 = StandardCharsets.ISO_8859_1;
     static final Charset UTF8 = StandardCharsets.UTF_8;
     static final Pattern DONE = Pattern.compile(": Done \\([\\d.,]+s\\)! For help");
@@ -49,6 +57,8 @@ public final class AmpSleep {
     File stateDir = new File("../tools/state");
     File propsFile = new File("server.properties");
     long stopTimeoutMillis = 180_000L;
+    long metricsMillis = 10_000L;
+    long backupHoldMaxMillis = 3 * 3600_000L;
     List<String> command = new ArrayList<>();
 
     // ---- runtime (guarded by lock unless volatile)
@@ -65,6 +75,9 @@ public final class AmpSleep {
     boolean userStop = false;       // AMP/user asked the server to stop: exit when it does
     boolean wakeAfterStop = false;  // someone tried to join while it was stopping
     boolean forced = false;
+    boolean backupHold = false;      // between AMP's backup "save-off" and "save-on": no sleeping, no waking
+    long backupHoldSince = 0;
+    boolean wakeAfterBackup = false; // someone wanted the server while a backup was running
     volatile String cachedStatus = null;
     volatile int lastClientProtocol = -1;
     long lastStatusRefresh = 0;
@@ -107,6 +120,7 @@ public final class AmpSleep {
                 case "--state-dir": stateDir = new File(v); break;
                 case "--properties": propsFile = new File(v); break;
                 case "--stop-timeout": stopTimeoutMillis = Long.parseLong(v.trim()) * 1000; break;
+                case "--metrics-seconds": metricsMillis = (long) (Double.parseDouble(v.trim()) * 1000); break;
                 default: msg("Ignoring unknown option " + k);
             }
         }
@@ -179,6 +193,11 @@ public final class AmpSleep {
     void wake(String why) {
         synchronized (lock) {
             if (state != State.SLEEPING || exiting) return;
+            if (backupHold) {
+                if (!wakeAfterBackup) msg("A backup is running - the server starts as soon as it finishes (" + why + ").");
+                wakeAfterBackup = true;
+                return;
+            }
             try {
                 String ip = readProperty("server-ip", "");
                 backendHost = ip.isEmpty() || ip.equals("0.0.0.0") ? "127.0.0.1" : ip;
@@ -293,7 +312,9 @@ public final class AmpSleep {
         boolean refresh = false;
         Process kill = null;
         boolean killHard = false;
+        boolean holdExpired = false;
         synchronized (lock) {
+            if (backupHold && now - backupHoldSince > backupHoldMaxMillis) holdExpired = true;
             if (state == State.RUNNING && now - lastStatusRefresh > 60_000) { refresh = true; lastStatusRefresh = now; }
             if (state == State.STARTING && now - lastStatusRefresh > 10_000) { refresh = true; lastStatusRefresh = now; }
             if (state == State.STOPPING && proc != null) {
@@ -301,10 +322,12 @@ public final class AmpSleep {
                 if (waited > stopTimeoutMillis + 30_000) { kill = proc; killHard = true; }
                 else if (waited > stopTimeoutMillis && !forced) { kill = proc; forced = true; }
             }
-            if (state == State.RUNNING && idleMillis > 0 && players == 0 && now - idleSince >= idleMillis) {
+            if (state == State.RUNNING && !backupHold && idleMillis > 0 && players == 0 && now - idleSince >= idleMillis) {
                 beginSleep("Nobody online for " + describeMillis(idleMillis));
             }
         }
+        if (holdExpired) endBackupHold(true);
+        if (metricsMillis > 0 && now - lastMetricsAt >= metricsMillis) { lastMetricsAt = now; reportMetrics(now); }
         if (kill != null) {
             if (killHard) { msg("Server still running - killing it."); kill.destroyForcibly(); }
             else { msg("Server did not stop within " + (stopTimeoutMillis / 1000) + "s - terminating it."); kill.destroy(); }
@@ -366,6 +389,107 @@ public final class AmpSleep {
     }
 
     // ------------------------------------------------------------------------------------------
+    // live backups (AMP quiesce: "save-off" ... backup ... "save-on")
+    void beginBackupHold(String raw) {
+        boolean forward;
+        State st;
+        synchronized (lock) {
+            st = state;
+            backupHold = true;
+            backupHoldSince = System.currentTimeMillis();
+            forward = proc != null;
+        }
+        // save-off stops autosaves; save-all flush then writes everything out, so the backup is
+        // current and nothing touches the world files until save-on.
+        if (forward && (!sendToServer(raw) || !sendToServer("save-all flush")))
+            msg("Could not send the command to the server.");
+        if (st == State.STOPPING) msg("Backup starting while the server is stopping - it is still saving, so this backup may catch it mid-save.");
+        else if (st == State.SLEEPING) msg("Backup starting while asleep. The server stays asleep until the backup finishes.");
+        else msg("Backup starting: world saved and autosave paused. The server won't sleep until the backup finishes.");
+    }
+
+    void endBackupHold(boolean expired) {
+        boolean wakeNow, running, was;
+        synchronized (lock) {
+            was = backupHold;
+            backupHold = false;
+            wakeNow = wakeAfterBackup && state == State.SLEEPING;
+            wakeAfterBackup = false;
+            running = proc != null;
+            if (was && players == 0) idleSince = System.currentTimeMillis();   // a full idle period after the backup
+        }
+        if (running && !sendToServer("save-on")) msg("Could not send the command to the server.");
+        if (expired) msg("No \"save-on\" came within " + describeMillis(backupHoldMaxMillis) + " of the backup starting - autosave and sleep are back on.");
+        else if (was) msg("Backup finished" + (running ? " - autosave is back on." : "."));
+        if (wakeNow) wake("someone wanted it during the backup");
+    }
+
+    // ------------------------------------------------------------------------------------------
+    // metrics: AMP's own graphs show this supervisor, so report the server's CPU and RAM ourselves
+    long lastMetricsAt = 0;
+    long lastCpuTicks = -1, lastCpuAt = 0, lastCpuPid = -1;
+
+    void reportMetrics(long now) {
+        Process p;
+        synchronized (lock) { p = proc; }
+        long pid = p == null ? -1 : pidOf(p);
+        double cpu = 0;
+        long ramMb = 0;
+        if (pid > 0) {
+            long ticks = cpuTicks(pid);
+            long rssKb = rssKb(pid);
+            if (ticks >= 0 && pid == lastCpuPid && lastCpuTicks >= 0 && now > lastCpuAt) {
+                // /proc times are in USER_HZ (100 on every mainstream Linux). Shown as a share of all
+                // usable cores, the same scale as AMP's own CPU gauge.
+                double cores = Math.max(1, Runtime.getRuntime().availableProcessors());
+                cpu = (ticks - lastCpuTicks) * 10.0 * 100.0 / (now - lastCpuAt) / cores;
+                cpu = Math.max(0, Math.min(100, cpu));
+            }
+            lastCpuPid = ticks >= 0 ? pid : -1;
+            lastCpuTicks = ticks;
+            lastCpuAt = now;
+            if (rssKb > 0) ramMb = rssKb / 1024;
+        } else {
+            lastCpuPid = -1;
+            lastCpuTicks = -1;
+        }
+        msg(String.format(Locale.ROOT, "Server metrics: CPU %.1f%%, RAM %d MB", cpu, ramMb));
+    }
+
+    static long cpuTicks(long pid) {
+        try {
+            String s = new String(Files.readAllBytes(Paths.get("/proc/" + pid + "/stat")), LATIN1);
+            String[] f = s.substring(s.lastIndexOf(')') + 2).trim().split("\\s+");
+            return Long.parseLong(f[11]) + Long.parseLong(f[12]);   // utime + stime (fields 14 and 15)
+        } catch (IOException | RuntimeException e) {
+            return -1;
+        }
+    }
+
+    static long rssKb(long pid) {
+        try {
+            for (String l : Files.readAllLines(Paths.get("/proc/" + pid + "/status"), LATIN1)) {
+                if (l.startsWith("VmRSS:")) return Long.parseLong(l.replaceAll("[^0-9]", ""));
+            }
+        } catch (IOException | RuntimeException ignored) { }
+        return -1;
+    }
+
+    /** PID of a child process: Process.pid() on Java 9+, the private "pid" field on Java 8. */
+    static long pidOf(Process p) {
+        try {
+            Method m = Process.class.getMethod("pid");
+            return ((Number) m.invoke(p)).longValue();
+        } catch (Exception ignored) { }
+        try {
+            java.lang.reflect.Field f = p.getClass().getDeclaredField("pid");
+            f.setAccessible(true);
+            return ((Number) f.get(p)).longValue();
+        } catch (Exception ignored) { }
+        return -1;
+    }
+
+    // ------------------------------------------------------------------------------------------
     // AMP console
     void consoleLoop() {
         try {
@@ -391,10 +515,17 @@ public final class AmpSleep {
                 }
                 beginSleep("!sleep");
                 return;
+            case "save-off":
+                beginBackupHold(raw);
+                return;
+            case "save-on":
+                endBackupHold(false);
+                return;
             case "!status":
                 synchronized (lock) {
                     String s = "State: " + state.name().toLowerCase(Locale.ROOT) + ", players online: " + players;
-                    if (state == State.RUNNING && players == 0 && idleMillis > 0) {
+                    if (backupHold) s += ", backup running (sleep and wake on hold)";
+                    else if (state == State.RUNNING && players == 0 && idleMillis > 0) {
                         long left = Math.max(0, idleMillis - (System.currentTimeMillis() - idleSince));
                         s += ", sleeping in " + describeMillis(left);
                     }
@@ -708,11 +839,11 @@ public final class AmpSleep {
     File childPidFile() { return new File(stateDir, "server-child.pid"); }
 
     void writeChildPid(Process p) {
+        long pid = pidOf(p);
+        if (pid <= 0) return;
         try {
-            Method m = Process.class.getMethod("pid");   // Java 9+
-            Object pid = m.invoke(p);
             Files.write(childPidFile().toPath(), (pid + "\n").getBytes(UTF8));
-        } catch (Exception ignored) { }
+        } catch (IOException ignored) { }
     }
 
     void clearChildPid() { childPidFile().delete(); }

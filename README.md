@@ -134,6 +134,10 @@ Sleeping** with nobody online, and starts again when someone joins from Minecraf
 - AMP shows the instance as running the whole time, and the console stays live. While asleep it
   answers `!wake` (start now), `!sleep` (sleep now if empty) and `!status`. Other commands typed
   while asleep are not run. **Stop**, **Restart** and **Update** work the same as without sleep.
+- AMP's own **CPU** and **Memory** gauges measure the watcher, not the server, so with sleep on they
+  stay near zero. The server's real usage is shown next to them as **Server CPU Percent** (share of
+  all the instance's cores, the same scale as AMP's gauge) and **Server RAM MB**, updated every 10
+  seconds and 0 while asleep. With sleep off, AMP's own gauges show the server directly.
 - **Start Asleep** makes AMP's Start skip booting the server until someone joins. That's handy when the
   host restarts and AMP brings every instance back.
 
@@ -146,9 +150,11 @@ Things to know:
 
 - The server sees every player coming from `127.0.0.1`, so IP bans don't work. With playit.gg
   that was already the case.
-- Scheduled AMP backups don't wake a sleeping server. A scheduled restart boots it (unless
-  **Start Asleep** is on), and it falls asleep again once the idle time passes.
-- The jar is downloaded once from this repo's GitHub release `amp-sleep-1.0.0` and checked against
+- AMP backups don't wake a sleeping server, and while one runs the server neither falls asleep nor
+  wakes up. A player who joins during a backup gets the waking-up message, and the server starts when
+  the backup finishes. A scheduled restart boots it (unless **Start Asleep** is on), and it falls
+  asleep again once the idle time passes.
+- The jar is downloaded once from this repo's GitHub release `amp-sleep-<version>` and checked against
   a SHA-256 in `ampmodpack.sh`. If that fails, the server starts normally without sleep, with a
   warning in the console.
 
@@ -250,6 +256,14 @@ Two layers:
    automatic updates, put *Take a backup* before *Update* in the same schedule. AMP's backups cover the whole instance
    including mods, so they are the full rollback; the pre-update snapshot is the quick one.
 
+AMP backups run while the server is up; you don't need *Shutdown for Backup*. AMP sends `save-off`
+first. The template follows it with `save-all flush`, so the world on disk is current and autosave
+stays paused until AMP sends `save-on` after the backup. AMP waits 15 seconds after `save-off`
+before it starts copying. If a huge world's save takes longer than that (watch for `Saved the game`
+in the console), raise AMP's quiesce delay in its backup settings. Typing `save-off` yourself does
+the same: with sleep on, the server won't sleep or wake until you type `save-on`. If `save-on`
+never comes, AmpSleep turns autosave back on after 3 hours.
+
 Large worlds make the pre-update snapshot slow. If you rely on AMP's scheduled backups only, turn **Back Up Before Updating** off.
 
 ---
@@ -283,7 +297,9 @@ curseforge-modpack/
 ## How starting works
 
 `ampmodpack.sh start` runs from AMP, sets `server-port`, writes `eula.txt`, then **execs** Java
-directly, so AMP owns the Java process (console, `stop`, CPU/RAM graphs):
+directly, so AMP owns the Java process (console, `stop`, CPU/RAM graphs). The console reaches Java
+through a small line filter, the only change being that `save-off` is followed by `save-all flush`
+for live backups:
 
 - **NeoForge, and Forge 1.17+**: `java -Xms.. -Xmx.. <JVM args> @libraries/net/<loader>/<version>/unix_args.txt nogui`. The `unix_args.txt` path is read from the `run.sh` the installer generated. The installer's `user_jvm_args.txt` is ignored; use **Max RAM** and **Extra JVM Arguments** instead.
 - **Forge 1.16.5 and older**: `java ... -jar forge-<version>.jar nogui`
@@ -291,6 +307,7 @@ directly, so AMP owns the Java process (console, `stop`, CPU/RAM graphs):
 
 With **Sleep When Empty** on, the same Java command is handed to the sleep supervisor rather than exec'd:
 `java -Xmx48M -jar amp-sleep-<v>.jar --port <AMP port> ... -- setpriv --pdeathsig TERM -- java -Xmx.. ... nogui`.
-The supervisor is what AMP sees; it forwards the console and `stop`. Before each launch it rewrites
+The supervisor is what AMP sees; it forwards the console and `stop`, and prints the server's CPU/RAM
+as a hidden `Server metrics:` console line that the template's `MetricsRegex` turns into the dashboard values. Before each launch it rewrites
 `server-port` to a free private port. `setpriv` makes sure the server gets a clean `SIGTERM` if the
 supervisor is ever killed. Without sleep, `server-port` goes back to the AMP port on the next start.

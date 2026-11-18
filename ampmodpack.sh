@@ -20,11 +20,11 @@
 set -Eeuo pipefail
 umask 022
 
-SCRIPT_VERSION="1.3.0"
+SCRIPT_VERSION="1.4.0"
 DEFAULT_HELPER_VERSION="1.76.0"
 # Sleep supervisor (source in sleep/AmpSleep.java), downloaded from a GitHub release and checked.
-SLEEP_VERSION="1.0.0"
-SLEEP_SHA256="b258dce6b24e5d149b1bbbf4186d7bfa54e7abf8b25683a3eea125e1a276d5bc"
+SLEEP_VERSION="1.1.0"
+SLEEP_SHA256="65b9fbf70bd3747795ee43f26e97895b4eb05159ab9bbfb415893958c41e03f5"
 SLEEP_URL="https://github.com/Standardan/amp-curseforge-modpacks/releases/download/amp-sleep-${SLEEP_VERSION}/amp-sleep.jar"
 DEFAULT_EXCLUDE_FILE="https://raw.githubusercontent.com/itzg/docker-minecraft-server/master/files/cf-exclude-include.json"
 
@@ -728,6 +728,26 @@ apply_gamerules() { # apply_gamerules MC_VERSION rule=value...
 # ---------------------------------------------------------------------------------------------
 # start
 # ---------------------------------------------------------------------------------------------
+# AMP console -> server, line by line. AMP's live backup sends "save-off" (the template's
+# QuiesceCommand). On its own that only pauses autosave, leaving the world on disk up to one autosave
+# old, so "save-all flush" follows it and the backup is current. (AmpSleep does the same in sleep mode.)
+console_filter() { # console_filter SERVER_PID
+  local server_pid="$1" line="" part rc
+  while :; do
+    if IFS= read -r -t 5 part; then
+      line+="$part"
+      printf '%s\n' "$line" || exit 0
+      [[ "${line,,}" =~ ^[[:space:]]*/?save-off[[:space:]]*$ ]] && { printf 'save-all flush\n' || exit 0; }
+      line=""
+    else
+      rc=$?
+      (( rc > 128 )) || { [[ -z "$line$part" ]] || printf '%s' "$line$part"; exit 0; }   # end of input
+      line+="$part"                                    # timed out: keep any partial line
+      kill -0 "$server_pid" 2>/dev/null || exit 0      # the server has exited
+    fi
+  done
+}
+
 cmd_start() {
   local java_choice="auto" java_path="" ram="" port="" eula="false" props=() rules=() icon_url=""
   local sleep_on="true" sleep_idle="15" sleep_asleep="false" sleep_motd="" sleep_starting="" sleep_kick=""
@@ -815,7 +835,9 @@ cmd_start() {
     sleep_jar="$(ensure_sleep_jar)" || { sleep_jar=""; warn "Starting without sleep mode this time."; }
   fi
   if [[ -z "$sleep_jar" ]]; then
-    exec "${server_cmd[@]}" 3>&-
+    # java replaces this shell (same PID, so AMP's CPU/RAM graphs show the server); the console
+    # goes through console_filter, which survives as java's child.
+    exec "${server_cmd[@]}" 3>&- < <(console_filter "$$")
   fi
 
   # Sleep mode: the supervisor listens on the AMP port and runs the server on a private port.
